@@ -1,0 +1,20 @@
+services:
+  - type: static
+    name: paneles-solares
+    rootDir: .
+    buildCommand: ""
+    staticPublishPath: .
+    headers:
+      - path: /img/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /css/*
+        name: Cache-Control
+        value: public, max-age=604800, immutable
+      - path: /js/*
+        name: Cache-Control
+        value: public, max-age=604800, immutable
+    routes:
+      - type: redirect
+        source: /*
+        destination: /index.html

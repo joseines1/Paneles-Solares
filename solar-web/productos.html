@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Productos | SolarWeb</title>
+    <meta name="description"
+        content="Catálogo de paneles solares, inversores y baterías de almacenamiento de SolarWeb. Tecnología de primer nivel al mejor precio." />
+    <meta property="og:title" content="Productos | SolarWeb" />
+    <meta property="og:description" content="Paneles solares, inversores y baterías de alto rendimiento." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="img/panel_residencial.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Productos | SolarWeb" />
+    <meta name="twitter:description" content="Paneles solares, inversores y baterías de alto rendimiento." />
+    <link rel="canonical" href="https://paneles-solares.onrender.com/productos.html" />
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/estilos.css?v=1.0.0" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <style>
+        .products-tabs {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 3rem;
+        }
+
+        .tab-btn {
+            padding: 0.6rem 1.6rem;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: transparent;
+            color: var(--gray-400);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .tab-btn:hover,
+        .tab-btn.active {
+            background: var(--primary);
+            color: var(--secondary);
+            border-color: var(--primary);
+            font-weight: 700;
+        }
+
+        .compare-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--secondary-mid);
+            border-top: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 1rem 2rem;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 500;
+            backdrop-filter: blur(20px);
+        }
+
+        .compare-bar.show {
+            display: flex;
+        }
+
+        .compare-bar p {
+            font-size: 0.9rem;
+            color: var(--gray-200);
+        }
+
+        .compare-bar p span {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .compare-clear {
+            background: none;
+            border: none;
+            color: var(--gray-400);
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .compare-clear:hover {
+            color: var(--primary);
+        }
+
+        .product-check {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Responsive para productos */
+        @media (max-width: 1024px) {
+            .product-card {
+                flex: 0 0 calc(50% - 1rem) !important;
+                max-width: calc(50% - 1rem) !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .product-card {
+                flex: 0 0 100% !important;
+                max-width: 100% !important;
+            }
+        }
+    </style>
+    <style>
+        .product-check {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: transparent;
+            z-index: 2;
+        }
+
+        .product-card.selected .product-check {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--secondary);
+        }
+
+        .ribbon {
+            position: absolute;
+            top: 14px;
+            left: -3px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.25rem 0.8rem;
+            border-radius: 0 4px 4px 0;
+            z-index: 3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .ribbon::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -4px;
+            border: 4px solid transparent;
+            border-top-color: #b91c1c;
+            border-right-color: #b91c1c;
+        }
+
+        .rating {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .rating .stars-s {
+            color: var(--primary);
+            font-size: 0.85rem;
+        }
+
+        .rating span {
+            color: var(--gray-400);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar scrolled" id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <div class="logo-icon">☀️</div>
+                <div class="logo-text">Solar<span>Web</span></div>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html">Inicio</a></li>
+                <li><a href="servicios.html">Servicios</a></li>
+                <li><a href="productos.html">Productos</a></li>
+                <li><a href="proyectos.html">Proyectos</a></li>
+                <li><a href="contacto.html" class="nav-cta">Cotizar Ahora</a></li>
+            </ul>
+            <button class="hamburger" id="hamburger" aria-label="Menú">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- PAGE HERO -->
+    <div class="page-hero">
+        <div class="container">
+            <div class="breadcrumb">
+                <a href="index.html">Inicio</a>
+                <span class="sep">›</span>
+                <span>Productos</span>
+            </div>
+            <span class="section-tag">Catálogo 2025</span>
+            <h1>Nuestros <span>Productos</span></h1>
+            <p>Paneles, inversores y baterías de primera calidad. Tecnología de vanguardia con la mejor garantía del
+                mercado.</p>
+        </div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <section>
+        <div class="container">
+
+            <!-- Tabs filtro -->
+            <div class="products-tabs reveal">
+                <button class="tab-btn active" data-tab="todos" id="tabTodos">Kits Solares</button>
+            </div>
+
+            <div class="products-grid" id="productsGrid" style="display: flex; flex-wrap: wrap; gap: 2rem; justify-content: flex-start;">
+                <!-- Kits Dinámicos de Supabase -->
+                <div id="kitsContainer" style="display: flex; flex-wrap: wrap; gap: 2rem; width: 100%;">
+                    <!-- Los kits se cargarán aquí dinámicamente -->
+                </div>
+            </div><!-- /products-grid -->
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="cta-bg"></div>
+        <div class="container">
+            <div class="cta-content reveal">
+                <h2>¿No encuentras lo que <span>buscas</span>?</h2>
+                <p>Creamos soluciones a medida. Contáctanos y diseñamos el sistema perfecto para tu caso específico.</p>
+                <div class="cta-buttons">
+                    <a href="contacto.html" class="btn-primary" id="productoCotizar">☀️ Solicitar Cotización</a>
+                    <a href="servicios.html" class="btn-secondary">Ver Servicios</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo-text">☀️ Solar<span>Web</span></div>
+                    <p>Especialistas en energía solar fotovoltaica. Transformamos la luz del sol en ahorro real para tu
+                        hogar y empresa.</p>
+                    <div class="footer-social">
+                        <a href="#" class="social-btn">📘</a>
+                        <a href="#" class="social-btn">📸</a>
+                        <a href="#" class="social-btn">▶️</a>
+                        <a href="#" class="social-btn">💼</a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4>Navegación</h4>
+                    <ul>
+                        <li><a href="index.html">Inicio</a></li>
+                        <li><a href="servicios.html">Servicios</a></li>
+                        <li><a href="productos.html">Productos</a></li>
+                        <li><a href="proyectos.html">Proyectos</a></li>
+                        <li><a href="contacto.html">Contacto</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Productos</h4>
+                    <ul>
+                        <li><a href="#">Paneles Monocristalinos</a></li>
+                        <li><a href="#">Paneles Bifaciales</a></li>
+                        <li><a href="#">Inversores</a></li>
+                        <li><a href="#">Baterías LiFePO4</a></li>
+                        <li><a href="#">Kits Completos</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Contacto</h4>
+                    <ul>
+                        <li><a href="tel:+528781010058">📞 (878) 101-0058</a></li>
+                        <li><a href="mailto:joseolivo78376@gmail.com">✉️ joseolivo78376@gmail.com</a></li>
+                        <li><a href="#">📍 Piedras Negras, Coahuila</a></li>
+                        <li><a href="#">🕐 Lun–Vie 8am–6pm</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© <span id="currentYear"></span> <span>SolarWeb</span>. Todos los derechos reservados.</p>
+                <p>Diseñado con ☀️ para un futuro más sostenible</p>
+            </div>
+        </div>
+    </footer>
+
+    <a href="https://wa.me/528781010058" class="whatsapp-float" target="_blank" rel="noopener"
+        aria-label="WhatsApp">💬</a>
+
+    <script src="js/script.js?v=1.0.0"></script>
+    
+    <script>
+        // Cargar kits dinámicos desde Supabase
+        async function loadKitsFromSupabase() {
+            const kitsContainer = document.getElementById('kitsContainer');
+            
+            try {
+                if (typeof supabaseClient !== 'undefined') {
+                    const { data, error } = await supabaseClient
+                        .from('kits')
+                        .select('*')
+                        .eq('is_active', true)
+                        .order('id', { ascending: false });
+                    
+                    if (error) {
+                        console.error('Error cargando kits:', error);
+                        return;
+                    }
+                    
+                    if (data && data.length > 0) {
+                        console.log(`Cargados ${data.length} kits de Supabase`);
+                        
+                        data.forEach(kit => {
+                            const kitCard = createKitCard(kit);
+                            kitsContainer.appendChild(kitCard);
+                        });
+                    } else {
+                        // Si no hay kits, no mostrar nada, solo dejar el contenedor vacío
+                        console.log('No hay kits activos en la base de datos');
+                    }
+                }
+            } catch (error) {
+                console.error('Error en la carga de kits:', error);
+            }
+        }
+        
+        // Crear tarjeta de kit
+        function createKitCard(kit) {
+            const card = document.createElement('div');
+            card.className = 'product-card reveal';
+            card.setAttribute('data-category', 'kit');
+            card.style.cssText = 'flex: 0 0 calc(33.333% - 1.33rem); max-width: calc(33.333% - 1.33rem);';
+            
+            // Calcular producción mensual estimada (aproximación simple)
+            const productionPerWatt = 4.5; // kWh por kW por mes (promedio)
+            const monthlyProduction = Math.round((kit.capacity / 1000) * productionPerWatt * 30);
+            
+            // Usar imagen personalizada si existe, sino imagen por categoría
+            let kitImage;
+            if (kit.image_url) {
+                kitImage = kit.image_url;
+            } else {
+                const imageMap = {
+                    'Residencial': 'img/panel_residencial.png',
+                    'Comercial': 'img/panel_comercial.png',
+                    'Industrial': 'img/panel_industrial.png'
+                };
+                kitImage = imageMap[kit.category] || 'img/panel_residencial.png';
+            }
+            
+            card.innerHTML = `
+                <div class="product-img-wrapper">
+                    <img src="${kitImage}" alt="${kit.name}" loading="lazy" />
+                    <span class="product-badge">📦 Kit</span>
+                    ${kit.stock <= 5 ? '<span class="product-badge" style="background: var(--danger);">⚠️ Últimas unidades</span>' : ''}
+                </div>
+                <div class="product-body">
+                    <div class="rating">
+                        <span class="stars-s">★★★★★</span>
+                        <span>(${Math.floor(Math.random() * 200) + 50} reseñas)</span>
+                    </div>
+                    <h3>${kit.name}</h3>
+                    <p class="product-desc">${kit.description || `Kit solar ${kit.category} de alta calidad con ${kit.panels} paneles.`}</p>
+                    <div class="product-specs">
+                        <div class="spec-item">
+                            <div class="spec-val">${(kit.capacity / 1000).toFixed(1)} kW</div>
+                            <div class="spec-key">Sistema</div>
+                        </div>
+                        <div class="spec-item">
+                            <div class="spec-val">${kit.panels} pzas</div>
+                            <div class="spec-key">Paneles</div>
+                        </div>
+                        <div class="spec-item">
+                            <div class="spec-val">${monthlyProduction.toLocaleString('es-MX')} kWh</div>
+                            <div class="spec-key">Producción/mes</div>
+                        </div>
+                        <div class="spec-item">
+                            <div class="spec-val">${kit.warranty || '25'} años</div>
+                            <div class="spec-key">Garantía</div>
+                        </div>
+                    </div>
+                    <div class="product-footer">
+                        <div class="product-price">$${parseFloat(kit.price).toLocaleString('es-MX')} <span>MXN</span></div>
+                        <a href="contacto.html?kit=${encodeURIComponent(kit.name)}" class="btn-product">Cotizar</a>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        // Cargar kits cuando la página esté lista
+        document.addEventListener('DOMContentLoaded', function() {
+            loadKitsFromSupabase();
+            
+            // Actualizar tabs para incluir solo kits si es necesario
+            updateProductTabs();
+        });
+        
+        // Actualizar tabs de productos
+        function updateProductTabs() {
+            const tabsContainer = document.querySelector('.products-tabs');
+            if (tabsContainer) {
+                // Contar cuántos kits hay dinámicamente
+                const dynamicKits = document.querySelectorAll('#kitsContainer .product-card').length;
+                
+                // Actualizar el tab único
+                const kitsTab = document.getElementById('tabTodos');
+                if (kitsTab) {
+                    if (dynamicKits > 0) {
+                        kitsTab.textContent = `Kits Solares (${dynamicKits})`;
+                    } else {
+                        kitsTab.textContent = 'Kits Solares';
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        // Tabs de productos
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const productCards = document.querySelectorAll('#productsGrid .product-card');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const tab = btn.getAttribute('data-tab');
+                productCards.forEach(card => {
+                    const cat = card.getAttribute('data-category');
+                    if (tab === 'todos' || cat === tab) {
+                        card.style.display = '';
+                        card.style.animation = 'fadeInUp 0.4s ease forwards';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

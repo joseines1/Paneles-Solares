@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Panel de Administración Avanzado | SolarWeb</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/estilos.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/admin.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/admin-pagination.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/admin-access.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/admin-modal.css?v=1.0.0" />
+    
+    <!-- Chart.js para las gráficas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="admin-real-data.js"></script>
+    <script src="admin-search-filter.js"></script>
+    <script src="admin-kits.js"></script>
+
+    <style>
+        /* Tabs System */
+        .content-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .content-section.active {
+            display: block;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Modals and Forms */
+        .admin-form-group { margin-bottom: 1.5rem; }
+        .admin-form-group label { display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--gray-400); font-weight: 600; text-transform: uppercase; }
+        .admin-input, .admin-select, .admin-textarea { width: 100%; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 6px; font-family: 'Inter', sans-serif; }
+        .admin-input:focus { outline: none; border-color: var(--primary); background: rgba(0,0,0,0.4); }
+        
+        .btn-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .btn-success:hover { background: #10b981; color: #fff; }
+
+        .btn-danger { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .btn-danger:hover { background: #ef4444; color: #fff; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        
+        /* Notes CRM */
+        .crm-notes { font-size: 0.8rem; color: var(--gray-400); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* CMS images preview */
+        .cms-img-preview { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.3); margin-top: 0.5rem; }
+    </style>
+
+    <script>
+        // Authentication Guard with Supabase
+        checkSession().then(session => {
+            if (!session) {
+                console.log("No hay sesión en admin, redirigiendo a login...");
+                window.location.replace('login.html');
+            } else {
+                console.log("Sesión activa en admin:", session.user.email);
+            }
+        }).catch(err => {
+            console.error("Error comprobando sesión en admin:", err);
+            window.location.replace('login.html');
+        });
+
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            window.location.replace('login.html');
+        }
+    </script>
+</head>
+
+<body class="admin-body">
+
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar" id="adminSidebar">
+        <div class="sidebar-header">
+            <div class="logo-icon">☀️</div>
+            <div class="logo-text">Solar<span>Admin</span></div>
+            <button class="close-sidebar" id="closeSidebar">✕</button>
+        </div>
+
+        <ul class="sidebar-menu" id="adminNav">
+            <li><div class="menu-category">PRINCIPAL</div></li>
+            <li class="active" data-target="sec-dashboard"><a href="#"><span class="icon">📊</span> Dashboard</a></li>
+            <li data-target="sec-crm"><a href="#"><span class="icon">👥</span> Clientes (CRM)</a></li>
+            <li data-target="sec-quotes"><a href="#"><span class="icon">📨</span> Cotizaciones</a></li>
+            <li data-target="sec-kits"><a href="#"><span class="icon">🔋</span> Kits Solares</a></li>
+            <li><a href="#" onclick="logout(); return false;"><span class="icon">🚪</span> Salir</a></li>
+        </ul>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="admin-main">
+        <!-- HEADER -->
+        <header class="admin-header">
+            <button class="menu-toggle" id="menuToggle">☰</button>
+            <div class="search-bar">
+                <span class="search-icon">🔍</span>
+                <input type="text" placeholder="Buscar clientes, servicios, cotizaciones..." id="searchInput"/>
+            </div>
+            <div class="header-actions">
+                <button class="action-btn notifications active-notif">🔔</button>
+                <div class="user-profile">
+                    <img src="https://ui-avatars.com/api/?name=Admin+Pro&background=2563eb&color=fff" alt="Admin" class="avatar" />
+                    <div class="user-info">
+                        <strong>Administrador</strong>
+                        <span>Super Admin</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+
+            <!-- ===================== 1. DASHBOARD ===================== -->
+            <section id="sec-dashboard" class="content-section active">
+                <div class="page-title">
+                    <h1>Dashboard de Rendimiento</h1>
+                    <p>Visión general de conversiones y métricas principales</p>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card glass-panel">
+                        <div class="metric-icon blue">👥</div>
+                        <div class="metric-details">
+                            <span class="metric-title">Total Clientes (Leads)</span>
+                            <div class="metric-value" id="kpi-leads">0</div>
+                            <span class="metric-trend positive">↑ 12% vs pasado</span>
+                        </div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <div class="metric-icon orange">⏳</div>
+                        <div class="metric-details">
+                            <span class="metric-title">Cotizaciones Pendientes</span>
+                            <div class="metric-value" id="kpi-pending">0</div>
+                            <span class="metric-trend neutral">En Proceso</span>
+                        </div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <div class="metric-icon green">✅</div>
+                        <div class="metric-details">
+                            <span class="metric-title">Ventas Cerradas</span>
+                            <div class="metric-value" id="kpi-closed">0</div>
+                            <span class="metric-trend positive">↑ Excelente</span>
+                        </div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <div class="metric-icon purple">💰</div>
+                        <div class="metric-details">
+                            <span class="metric-title">Ingresos Proyectados</span>
+                            <div class="metric-value" id="kpi-income">$0</div>
+                            <span class="metric-trend positive">Estimado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div class="section-header-admin">
+                        <h2>Visitas y Conversiones Mensuales</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="conversionChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ===================== 2. CRM CLIENTES ===================== -->
+            <section id="sec-crm" class="content-section">
+                <div class="page-title">
+                    <h1>Gestión de Clientes (CRM)</h1>
+                    <p>Directorio de leads con seguimiento, notas y estados de venta.</p>
+                </div>
+
+                <div class="data-section glass-panel">
+                    <div class="section-header-admin">
+                        <h2>Base de Datos de Leads</h2>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <span id="resultsCount" style="color: var(--gray-400); font-size: 0.9rem;">0 resultados</span>
+                            <button class="btn-success">+ Crear Lead</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Controles de filtrado -->
+                    <div class="filter-controls" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                        <select id="statusFilter" class="admin-select" style="width: auto; min-width: 150px;">
+                            <option value="all">Todos los estados</option>
+                            <option value="Nuevo">Nuevos</option>
+                            <option value="En Proceso">En Proceso</option>
+                            <option value="Cerrado">Cerrados</option>
+                        </select>
+                        <select id="serviceFilter" class="admin-select" style="width: auto; min-width: 180px;">
+                            <option value="all">Todos los servicios</option>
+                            <option value="Instalación Residencial">Instalación Residencial</option>
+                            <option value="Instalación Comercial">Instalación Comercial</option>
+                        </select>
+                        <select id="itemsPerPage" class="admin-select" style="width: auto; min-width: 120px;" onchange="updateItemsPerPage(this.value)">
+                            <option value="10">10 por página</option>
+                            <option value="25">25 por página</option>
+                            <option value="50">50 por página</option>
+                        </select>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th onclick="sortBy('nombre')" style="cursor: pointer;">Cliente ↕</th>
+                                    <th onclick="sortBy('email')" style="cursor: pointer;">Contacto ↕</th>
+                                    <th>Ubicación / Factura</th>
+                                    <th>Notas Internas</th>
+                                    <th onclick="sortBy('status')" style="cursor: pointer;">Estado CRM ↕</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="crmTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Paginación -->
+                    <div id="paginationContainer" style="margin-top: 1.5rem; display: flex; justify-content: center;"></div>
+                </div>
+            </section>
+
+
+            <!-- ===================== 3. COTIZACIONES ===================== -->
+            <section id="sec-quotes" class="content-section">
+                <div class="page-title">
+                    <h1>Sistema de Cotizaciones</h1>
+                    <p>Calcula paneles, visualiza solicitudes web y exporta propuestas a PDF.</p>
+                </div>
+
+                <div class="data-section glass-panel">
+                    <div class="section-header-admin">
+                        <h2>Generador y Lista</h2>
+                        <button class="btn-success" onclick="alert('Abriendo generador avanzado de cotizaciones (Calculadora de paneles)...')">+ Nueva Cotización</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th onclick="sortBy('nombre')" style="cursor: pointer;">Cliente / Empresa ↕</th>
+                                    <th onclick="sortBy('servicio')" style="cursor: pointer;">Servicio ↕</th>
+                                    <th onclick="sortBy('created_at')" style="cursor: pointer;">Fecha ↕</th>
+                                    <th onclick="sortBy('status')" style="cursor: pointer;">Estado ↕</th>
+                                    <th>Acciones Rápidas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="quotesTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===================== KITS SOLARES ===================== -->
+            <section id="sec-kits" class="content-section">
+                <div class="page-title">
+                    <h1>Gestión de Kits Solares</h1>
+                    <p>Catálogo de productos y gestión de inventario.</p>
+                </div>
+
+                <div class="data-section glass-panel">
+                    <div class="section-header-admin">
+                        <h2>Catálogo de Kits</h2>
+                        <button class="btn-success" onclick="showKitModal()">+ Agregar Kit</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Kit / Categoría</th>
+                                    <th>Capacidad</th>
+                                    <th>Precio</th>
+                                    <th>Stock</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kitsTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="kitsPaginationContainer"></div>
+                </div>
+            </section>
+
+            <!-- ===================== 4. SECCIONES ELIMINADAS ===================== -->
+            <!-- Las secciones de Servicios, CMS, Mensajes, Usuarios, Editar Página y Funciones Pro 
+                 han sido eliminadas para simplificar el panel y mantener solo 
+                 las funcionalidades principales que funcionan correctamente. -->
+
+        </div>
+    </main>
+
+    <!-- App Logic -->
+    <script>
+        // -------------------------
+        // 1. TABS NAVIGATION LOGIC
+        // -------------------------
+        const navItems = document.querySelectorAll('#adminNav li[data-target]');
+        const sections = document.querySelectorAll('.content-section');
+
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Remove active classes
+                navItems.forEach(ni => ni.classList.remove('active'));
+                sections.forEach(sec => sec.classList.remove('active'));
+
+                // Add active to clicked target
+                item.classList.add('active');
+                const targetId = item.getAttribute('data-target');
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+
+        // -------------------------
+        // 2. DATA MANAGEMENT (CRUD)
+        // -------------------------
+        let quotes = [];
+
+        async function loadData() {
+            try {
+                if (typeof supabaseClient !== 'undefined') {
+                    // Cargar datos principales de contactos
+                    const { data: contactData, error: contactError } = await supabaseClient
+                        .from('contact_messages')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (contactError) throw contactError;
+                    
+                    if (contactData && contactData.length > 0) {
+                        quotes = contactData;
+                        console.log(`Cargados ${contactData.length} contactos de Supabase`);
+                    } else {
+                        quotes = [];
+                        console.log("No hay contactos en Supabase");
+                    }
+
+                    // Cargar proyectos
+                    try {
+                        const { data: projectsData, error: projectsError } = await supabaseClient
+                            .from('projects')
+                            .select('*')
+                            .order('created_at', { ascending: false });
+                        
+                        if (!projectsError && projectsData) {
+                            window.projectsData = projectsData;
+                            console.log(`Cargados ${projectsData.length} proyectos de Supabase`);
+                        }
+                    } catch (err) {
+                        console.log("Error cargando proyectos:", err);
+                        window.projectsData = [];
+                    }
+
+                    // Cargar citas
+                    try {
+                        const { data: appointmentsData, error: appointmentsError } = await supabaseClient
+                            .from('appointments')
+                            .select('*')
+                            .order('appointment_date', { ascending: false });
+                        
+                        if (!appointmentsError && appointmentsData) {
+                            window.appointmentsData = appointmentsData;
+                            console.log(`Cargadas ${appointmentsData.length} citas de Supabase`);
+                        }
+                    } catch (err) {
+                        console.log("Error cargando citas:", err);
+                        window.appointmentsData = [];
+                    }
+
+                    // Cargar servicios
+                    try {
+                        const { data: servicesData, error: servicesError } = await supabaseClient
+                            .from('services')
+                            .select('*')
+                            .order('name', { ascending: true });
+                        
+                        if (!servicesError && servicesData) {
+                            window.servicesData = servicesData;
+                            console.log(`Cargados ${servicesData.length} servicios de Supabase`);
+                        }
+                    } catch (err) {
+                        console.log("Error cargando servicios:", err);
+                        window.servicesData = [];
+                    }
+
+                    // Cargar comunicaciones
+                    try {
+                        const { data: communicationsData, error: communicationsError } = await supabaseClient
+                            .from('communications')
+                            .select('*')
+                            .order('created_at', { ascending: false });
+                        
+                        if (!communicationsError && communicationsData) {
+                            window.communicationsData = communicationsData;
+                            console.log(`Cargadas ${communicationsData.length} comunicaciones de Supabase`);
+                        }
+                    } catch (err) {
+                        console.log("Error cargando comunicaciones:", err);
+                        window.communicationsData = [];
+                    }
+
+                    // Cargar kits solares
+                    try {
+                        const { data: kitsData, error: kitsError } = await supabaseClient
+                            .from('kits')
+                            .select('*')
+                            .order('created_at', { ascending: false });
+                        
+                        if (!kitsError && kitsData) {
+                            window.kitsData = kitsData;
+                            console.log(`Cargados ${kitsData.length} kits de Supabase`);
+                        }
+                    } catch (err) {
+                        console.log("Error cargando kits:", err);
+                        window.kitsData = [];
+                    }
+
+                    // Cargar documentos
+                    try {
+                        const { data: documentsData, error: documentsError } = await supabaseClient
+                            .from('documents')
+                            .select('*')
+                            .order('created_at', { ascending: false });
+                        
+                        if (!documentsError && documentsData) {
+                            window.documentsData = documentsData;
+                            console.log(`Cargados ${documentsData.length} documentos de Supabase`);
+                        }
+                    } catch (err) {
+                        console.log("Error cargando documentos:", err);
+                        window.documentsData = [];
+                    }
+
+                    // Cargar estadísticas del dashboard
+                    try {
+                        const { data: statsData, error: statsError } = await supabaseClient
+                            .rpc('get_dashboard_stats');
+                        
+                        if (!statsError && statsData) {
+                            window.dashboardStats = statsData;
+                            console.log("Estadísticas cargadas:", statsData);
+                        }
+                    } catch (err) {
+                        console.log("Error cargando estadísticas:", err);
+                        window.dashboardStats = null;
+                    }
+
+                } else {
+                    // Fallback a localStorage
+                    quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
+                    console.log("Usando datos de localStorage (fallback)");
+                }
+            } catch (err) {
+                console.error("Error general cargando datos de Supabase:", err);
+                quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
+            }
+            
+            renderAllData();
+        }
+
+        async function saveData() {
+            // No need to save all data to Supabase like localStorage
+            // Individual updates will be handled by their respective functions
+            renderAllData();
+        }
+
+        function renderAllData() {
+            // Calcular métricas usando estadísticas de Supabase si están disponibles
+            let metrics;
+            if (window.dashboardStats) {
+                const stats = window.dashboardStats;
+                metrics = {
+                    totalLeads: stats.total_leads || 0,
+                    newQuotes: stats.new_leads || 0,
+                    inProcess: stats.in_process || 0,
+                    closedSales: stats.closed_sales || 0,
+                    projectedIncome: (stats.closed_sales || 0) * 185000 // Promedio estimado
+                };
+            } else {
+                // Fallback a cálculo local
+                metrics = calculateRealMetrics(quotes);
+            }
+            
+            document.getElementById('kpi-leads').textContent = metrics.totalLeads;
+            document.getElementById('kpi-pending').textContent = metrics.newQuotes + metrics.inProcess;
+            document.getElementById('kpi-closed').textContent = metrics.closedSales;
+            
+            const income = metrics.projectedIncome.toLocaleString('es-MX');
+            document.getElementById('kpi-income').textContent = `$${income}`;
+
+            // Usar función de renderizado filtrado
+            renderFilteredData();
+        }
+
+        // Funciones globales
+        window.updateStatus = async function(id, newStatus) {
+            const index = quotes.findIndex(q => q.id === id);
+            if (index !== -1) {
+                quotes[index].status = newStatus;
+                if (typeof supabaseClient !== 'undefined') {
+                    const { error } = await supabaseClient
+                        .from('contact_messages')
+                        .update({ status: newStatus })
+                        .eq('id', id);
+                    if (error) console.error('Error actualizando estado:', error);
+                } else {
+                    localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+                }
+                renderAllData();
+            }
+        };
+
+        window.updateNote = async function(id, noteText) {
+            const index = quotes.findIndex(q => q.id === id);
+            if (index !== -1) {
+                quotes[index].crmNote = noteText;
+                if (typeof supabaseClient !== 'undefined') {
+                    const { error } = await supabaseClient
+                        .from('contact_messages')
+                        .update({ crmNote: noteText })
+                        .eq('id', id);
+                    if (error) console.error('Error actualizando nota:', error);
+                } else {
+                    localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+                }
+                renderAllData();
+            }
+        };
+
+        window.deleteQuote = async function(id) {
+            if (confirm("¿Estás seguro de que deseas eliminar este cliente/cotización permanentemente?")) {
+                quotes = quotes.filter(q => q.id !== id);
+                if (typeof supabaseClient !== 'undefined') {
+                    const { error } = await supabaseClient
+                        .from('contact_messages')
+                        .delete()
+                        .eq('id', id);
+                    if (error) console.error('Error eliminando:', error);
+                } else {
+                    localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+                }
+                renderAllData();
+            }
+        };
+
+        // Función para actualizar items por página
+        window.updateItemsPerPage = function(value) {
+            searchState.itemsPerPage = parseInt(value);
+            searchState.currentPage = 1; // Resetear a primera página
+            renderFilteredData();
+        };
+
+        // -------------------------
+        // 3. CHART.JS INITIALIZATION
+        // -------------------------
+        function initChart() {
+            const ctx = document.getElementById('conversionChart').getContext('2d');
+            
+            // Generar datos reales basados en las cotizaciones existentes
+            const monthlyData = generateRealMonthlyData(quotes);
+            
+            // gradient 
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(249, 115, 22, 0.6)');
+            gradient.addColorStop(1, 'rgba(249, 115, 22, 0.05)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: monthlyData.labels,
+                    datasets: [{
+                        label: 'Cotizaciones',
+                        data: monthlyData.values,
+                        borderColor: 'rgb(249, 115, 22)',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgb(249, 115, 22)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Cotizaciones: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.6)',
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.6)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // INIT All - Esperar a que la autenticación se verifique
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar sesión antes de cargar datos
+            checkSession().then(session => {
+                if (session) {
+                    console.log("Sesión confirmada, cargando datos...");
+                    
+                    // Cargar datos reales si la base está vacía
+                    loadData().then(() => {
+                        initializeSearchFilters();
+                        renderFilteredData();
+                        setTimeout(initChart, 200);
+                        
+                        // Cargar kits si estamos en la sección de kits
+                        if (typeof loadKits === 'function') {
+                            loadKits();
+                        }
+                    });
+                } else {
+                    console.log("No hay sesión activa");
+                    window.location.replace('login.html');
+                }
+            }).catch(err => {
+                console.error("Error en la inicialización:", err);
+                window.location.replace('login.html');
+            });
+        });
+
+        // Sidebar behavior
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('adminSidebar');
+        const closeSidebar = document.getElementById('closeSidebar');
+
+        menuToggle.addEventListener('click', () => sidebar.classList.add('open'));
+        closeSidebar.addEventListener('click', () => sidebar.classList.remove('open'));
+    </script>
+</body>
+
+</html>
