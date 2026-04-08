@@ -21,6 +21,7 @@
     <script src="js/supabase-config.js?v=2.0.0"></script>
     <script src="admin-real-data.js?v=2.0.0"></script>
     <script src="admin-search-filter.js?v=2.0.0"></script>
+    <script src="admin-kits.js?v=1.0.0"></script>
     <script src="admin-promos.js?v=1.0.0"></script>
 
     <style>
@@ -94,6 +95,7 @@
             <li class="active" data-target="sec-dashboard"><a href="#"><span class="icon">📊</span> Dashboard</a></li>
             <li data-target="sec-crm"><a href="#"><span class="icon">👥</span> Clientes (CRM)</a></li>
             <li data-target="sec-quotes"><a href="#"><span class="icon">📨</span> Cotizaciones</a></li>
+            <li data-target="sec-kits"><a href="#"><span class="icon">📦</span> Productos / Kits</a></li>
             <li data-target="sec-promos"><a href="#"><span class="icon">🏷️</span> Promociones</a></li>
             <li><a href="#" onclick="logout(); return false;"><span class="icon">🚪</span> Salir</a></li>
         </ul>
@@ -266,7 +268,40 @@
                 </div>
             </section>
 
-            <!-- ===================== 4. PROMOCIONES ===================== -->
+            <!-- ===================== 4. KITS / PRODUCTOS ===================== -->
+            <section id="sec-kits" class="content-section">
+                <div class="page-title">
+                    <h1>📦 Gestión de Productos y Kits</h1>
+                    <p>Crea productos y kits solares que se mostrarán en la página de Productos y podrás usar en Promociones.</p>
+                </div>
+
+                <div class="data-section glass-panel">
+                    <div class="section-header-admin">
+                        <h2>Catálogo de Productos</h2>
+                        <button class="btn-success" onclick="showKitModal()">+ Crear Producto</button>
+                    </div>
+
+                    <div class="table-responsive" style="margin-top:1rem;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Producto / Kit</th>
+                                    <th>Capacidad</th>
+                                    <th>Precio</th>
+                                    <th>Stock</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kitsTableBody">
+                                <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray-400);">Cargando productos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===================== 5. PROMOCIONES ===================== -->
             <section id="sec-promos" class="content-section">
                 <div class="page-title">
                     <h1>🏷️ Gestión de Promociones</h1>
@@ -301,6 +336,60 @@
         </div>
     </main>
 
+    <!-- Modal Productos / Kits -->
+    <div id="kitModal" class="modal-overlay">
+        <div class="modal-content glass-panel" style="max-width: 600px; width: 90%;">
+            <div class="modal-header">
+                <h3 id="kitModalTitle">Crear Producto / Kit</h3>
+                <button class="modal-close" onclick="closeKitModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="kitForm">
+                    <div class="admin-form-group">
+                        <label for="kitName">Nombre del Producto *</label>
+                        <input type="text" id="kitName" class="admin-input" required placeholder="Ej: Kit Solar Residencial 5kW">
+                    </div>
+                    <div class="grid-2">
+                        <div class="admin-form-group">
+                            <label for="kitCapacity">Capacidad (kW) *</label>
+                            <input type="number" step="0.1" id="kitCapacity" class="admin-input" required placeholder="Ej: 5.0">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="kitPrice">Precio (MXN) *</label>
+                            <input type="number" id="kitPrice" class="admin-input" required placeholder="Ej: 65000">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="admin-form-group">
+                            <label for="kitStock">Stock *</label>
+                            <input type="number" id="kitStock" class="admin-input" required value="10">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="kitStatus">Estado *</label>
+                            <select id="kitStatus" class="admin-select">
+                                <option value="Activo">Activo</option>
+                                <option value="Agotado">Agotado</option>
+                                <option value="Oculto">Oculto</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="admin-form-group">
+                        <label for="kitDesc">Descripción *</label>
+                        <textarea id="kitDesc" class="admin-textarea" required rows="3" placeholder="Descripción del kit y componentes..."></textarea>
+                    </div>
+                    <div class="admin-form-group">
+                        <label for="kitFeatures">Características Principales (separadas por coma) *</label>
+                        <textarea id="kitFeatures" class="admin-textarea" required rows="2" placeholder="Ej: 10 Paneles de 500W, Inversor Central, Estructura de aluminio"></textarea>
+                    </div>
+                    <div style="display:flex; gap:1rem; margin-top:2rem;">
+                        <button type="submit" class="btn-success" style="flex:1;">Guardar Producto</button>
+                        <button type="button" class="btn-danger" style="flex:1;" onclick="closeKitModal()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Promociones -->
     <div id="promoModal" class="modal-overlay">
         <div class="modal-content glass-panel" style="max-width: 600px; width: 90%;">
@@ -310,6 +399,13 @@
             </div>
             <div class="modal-body">
                 <form id="promoForm">
+                    <div class="admin-form-group">
+                        <label for="promoProductSelect">Vincular a Producto / Kit (Opcional)</label>
+                        <select id="promoProductSelect" class="admin-select">
+                            <option value="">-- Seleccionar un Producto --</option>
+                        </select>
+                        <p style="font-size:0.75rem; color:var(--gray-400); margin-top:0.25rem;">Si seleccionas un producto, al hacer clic en la promoción el usuario podrá ver los detalles del producto.</p>
+                    </div>
                     <div class="admin-form-group">
                         <label for="promoTitle">Título de la Promoción *</label>
                         <input type="text" id="promoTitle" class="admin-input" required placeholder="Ej: Kit Residencial Básico">
@@ -595,6 +691,11 @@
                         renderFilteredData();
                         setTimeout(initChart, 200);
                     });
+
+                    // Cargar kits
+                    if (typeof loadKits === 'function') {
+                        loadKits();
+                    }
 
                     // Cargar promociones
                     if (typeof loadPromos === 'function') {

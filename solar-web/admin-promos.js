@@ -88,6 +88,11 @@ function showPromoModal(id = null) {
 
     const form = document.getElementById('promoForm');
     form.reset();
+    
+    // Si existe la función para poblar el select, la llamamos (desde admin-kits.js)
+    if (typeof populateProductSelectForPromos === 'function') {
+        populateProductSelectForPromos();
+    }
 
     if (id) {
         editingPromoId = id;
@@ -102,6 +107,11 @@ function showPromoModal(id = null) {
             document.getElementById('promoBadgeColor').value = promo.badgeColor;
             document.getElementById('promoIcon').value = promo.icon;
             document.getElementById('promoFeatures').value = promo.features;
+            
+            // Setear el producto vinculado si existe
+            if (document.getElementById('promoProductSelect') && promo.kitId) {
+                document.getElementById('promoProductSelect').value = promo.kitId;
+            }
         }
     } else {
         editingPromoId = null;
@@ -128,20 +138,26 @@ function savePromo(event) {
     const badgeColor = document.getElementById('promoBadgeColor').value;
     const icon = document.getElementById('promoIcon').value.trim();
     const features = document.getElementById('promoFeatures').value.trim();
+    
+    // Guardar el id del kit vinculado
+    let kitId = null;
+    if (document.getElementById('promoProductSelect')) {
+        kitId = document.getElementById('promoProductSelect').value;
+    }
 
     if (editingPromoId) {
         const index = promos.findIndex(p => p.id === editingPromoId);
         if (index !== -1) {
             promos[index] = {
                 id: editingPromoId,
-                title, description, originalPrice, promoPrice, badge, badgeColor, icon, features
+                title, description, originalPrice, promoPrice, badge, badgeColor, icon, features, kitId
             };
         }
     } else {
         const newId = promos.length > 0 ? Math.max(...promos.map(p => p.id)) + 1 : 1;
         promos.push({
             id: newId,
-            title, description, originalPrice, promoPrice, badge, badgeColor, icon, features
+            title, description, originalPrice, promoPrice, badge, badgeColor, icon, features, kitId
         });
     }
 

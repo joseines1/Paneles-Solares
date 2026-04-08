@@ -316,21 +316,23 @@
     
     <script>
         // Cargar kits desde localStorage (guardados por el admin)
-        function loadKitsFromSupabase() {
+        function loadKitsFromLocalStorage() {
             const kitsContainer = document.getElementById('kitsContainer');
             const kits = JSON.parse(localStorage.getItem('solar_kits') || '[]');
-            const activos = kits.filter(k => k.is_active !== false);
+            const activos = kits.filter(k => k.status !== 'Oculto');
 
             if (!activos.length) {
                 kitsContainer.innerHTML = `
                     <div style="width:100%;text-align:center;padding:4rem 2rem;color:var(--gray-400);">
                         <div style="font-size:3rem;margin-bottom:1rem;">☀️</div>
                         <h3 style="color:var(--gray-300);">Próximamente</h3>
-                        <p>Estamos preparando nuestra catálogo de kits. Contáctanos para una cotización personalizada.</p>
+                        <p>Estamos preparando nuestro catálogo de kits. Contáctanos para una cotización personalizada.</p>
                         <a href="contacto.html" class="btn-primary" style="display:inline-block;margin-top:1rem;">Solicitar cotización</a>
                     </div>`;
                 return;
             }
+
+            kitsContainer.innerHTML = '';
 
             activos.forEach(kit => {
                 const card = createKitCard(kit);
@@ -345,61 +347,38 @@
         // Crear tarjeta de kit
         function createKitCard(kit) {
             const card = document.createElement('div');
-            card.className = 'product-card reveal';
+            card.className = 'product-card reveal visible';
             card.setAttribute('data-category', 'kit');
-            card.style.cssText = 'flex: 0 0 calc(33.333% - 1.33rem); max-width: calc(33.333% - 1.33rem);';
+            card.style.cssText = 'flex: 0 0 calc(33.333% - 1.33rem); max-width: calc(33.333% - 1.33rem); display: flex; flex-direction: column; background: var(--secondary-mid); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden;';
             
-            // Calcular producción mensual estimada (aproximación simple)
-            const productionPerWatt = 4.5; // kWh por kW por mes (promedio)
-            const monthlyProduction = Math.round((kit.capacity / 1000) * productionPerWatt * 30);
+            let kitImage = 'img/panel_residencial.png';
+            if (kit.capacity > 5) kitImage = 'img/panel_comercial.png';
             
-            // Usar imagen personalizada si existe, sino imagen por categoría
-            let kitImage;
-            if (kit.image_url) {
-                kitImage = kit.image_url;
-            } else {
-                const imageMap = {
-                    'Residencial': 'img/panel_residencial.png',
-                    'Comercial': 'img/panel_comercial.png',
-                    'Industrial': 'img/panel_industrial.png'
-                };
-                kitImage = imageMap[kit.category] || 'img/panel_residencial.png';
-            }
+            const featuresList = kit.features ? kit.features.split(',').map(f => `<li>${f.trim()}</li>`).join('') : '';
             
             card.innerHTML = `
-                <div class="product-img-wrapper">
-                    <img src="${kitImage}" alt="${kit.name}" loading="lazy" />
-                    <span class="product-badge">📦 Kit</span>
-                    ${kit.stock <= 5 ? '<span class="product-badge" style="background: var(--danger);">⚠️ Últimas unidades</span>' : ''}
+                <div class="product-img-wrapper" style="position: relative; height: 200px; overflow: hidden;">
+                    <img src="${kitImage}" alt="${kit.name}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;" />
+                    <span class="product-badge" style="position: absolute; top: 1rem; left: 1rem; background: var(--primary); color: var(--secondary); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">📦 Kit</span>
+                    ${kit.stock <= 5 ? '<span class="product-badge" style="position: absolute; top: 1rem; right: 1rem; background: #ef4444; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">⚠️ Últimas unidades</span>' : ''}
                 </div>
-                <div class="product-body">
-                    <div class="rating">
-                        <span class="stars-s">★★★★★</span>
-                        <span>(${Math.floor(Math.random() * 200) + 50} reseñas)</span>
+                <div class="product-body" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1;">
+                    <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">${kit.name}</h3>
+                    <p class="product-desc" style="color: var(--gray-400); font-size: 0.9rem; margin-bottom: 1rem; flex: 1;">${kit.description}</p>
+                    
+                    <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--gray-400); font-size: 0.85rem;">Capacidad:</span>
+                            <span style="font-weight: 600;">${kit.capacity} kW</span>
+                        </div>
+                        <ul style="margin: 0; padding-left: 1.2rem; color: var(--gray-300); font-size: 0.85rem; line-height: 1.6;">
+                            ${featuresList}
+                        </ul>
                     </div>
-                    <h3>${kit.name}</h3>
-                    <p class="product-desc">${kit.description || `Kit solar ${kit.category} de alta calidad con ${kit.panels} paneles.`}</p>
-                    <div class="product-specs">
-                        <div class="spec-item">
-                            <div class="spec-val">${(kit.capacity / 1000).toFixed(1)} kW</div>
-                            <div class="spec-key">Sistema</div>
-                        </div>
-                        <div class="spec-item">
-                            <div class="spec-val">${kit.panels} pzas</div>
-                            <div class="spec-key">Paneles</div>
-                        </div>
-                        <div class="spec-item">
-                            <div class="spec-val">${monthlyProduction.toLocaleString('es-MX')} kWh</div>
-                            <div class="spec-key">Producción/mes</div>
-                        </div>
-                        <div class="spec-item">
-                            <div class="spec-val">${kit.warranty || '25'} años</div>
-                            <div class="spec-key">Garantía</div>
-                        </div>
-                    </div>
-                    <div class="product-footer">
-                        <div class="product-price">$${parseFloat(kit.price).toLocaleString('es-MX')} <span>MXN</span></div>
-                        <a href="contacto.html?kit=${encodeURIComponent(kit.name)}" class="btn-product">Cotizar</a>
+
+                    <div class="product-footer" style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem;">
+                        <div class="product-price" style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">$${parseFloat(kit.price).toLocaleString('es-MX')} <span style="font-size: 0.9rem; color: var(--gray-400); font-weight: 400;">MXN</span></div>
+                        <a href="contacto.html?kit=${encodeURIComponent(kit.id)}" class="btn-product" style="background: var(--primary); color: var(--secondary); padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; text-decoration: none;">Cotizar</a>
                     </div>
                 </div>
             `;
@@ -409,30 +388,15 @@
         
         // Cargar kits cuando la página esté lista
         document.addEventListener('DOMContentLoaded', function() {
-            loadKitsFromSupabase();
-            
-            // Actualizar tabs para incluir solo kits si es necesario
-            updateProductTabs();
+            loadKitsFromLocalStorage();
         });
         
-        // Actualizar tabs de productos
-        function updateProductTabs() {
-            const tabsContainer = document.querySelector('.products-tabs');
-            if (tabsContainer) {
-                // Contar cuántos kits hay dinámicamente
-                const dynamicKits = document.querySelectorAll('#kitsContainer .product-card').length;
-                
-                // Actualizar el tab único
-                const kitsTab = document.getElementById('tabTodos');
-                if (kitsTab) {
-                    if (dynamicKits > 0) {
-                        kitsTab.textContent = `Kits Solares (${dynamicKits})`;
-                    } else {
-                        kitsTab.textContent = 'Kits Solares';
-                    }
-                }
+        // Escuchar cambios en localStorage para actualizar en tiempo real
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'solar_kits' || !e.key) {
+                loadKitsFromLocalStorage();
             }
-        }
+        });
     </script>
     <script>
         // Tabs de productos

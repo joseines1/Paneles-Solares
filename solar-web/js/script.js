@@ -343,11 +343,11 @@ window.loadPromotions = function() {
                     </div>
                     <p>${promo.description}</p>
                     <ul class="service-features">
-                        ${featuresList}
-                    </ul>
-                    <a href="contacto.html?promo=${promo.id}" class="btn-primary" style="width: 100%; text-align: center; display: block; margin-top: 1rem; box-sizing: border-box; background-color: ${promo.badgeColor}; border-color: ${promo.badgeColor};">Aprovechar Oferta</a>
-                </div>
-            `;
+                    ${featuresList}
+                </ul>
+                <a href="${promo.kitId ? `productos.html?kit=${promo.kitId}` : `contacto.html?promo=${promo.id}`}" class="btn-primary" style="width: 100%; text-align: center; display: block; margin-top: 1rem; box-sizing: border-box; background-color: ${promo.badgeColor}; border-color: ${promo.badgeColor};">Aprovechar Oferta</a>
+            </div>
+        `;
             container.appendChild(card);
         });
     };
