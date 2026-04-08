@@ -21,7 +21,7 @@
     <script src="js/supabase-config.js?v=2.0.0"></script>
     <script src="admin-real-data.js?v=2.0.0"></script>
     <script src="admin-search-filter.js?v=2.0.0"></script>
-    <script src="admin-kits.js?v=2.0.0"></script>
+    <script src="admin-promos.js?v=1.0.0"></script>
 
     <style>
         /* Tabs System */
@@ -94,7 +94,7 @@
             <li class="active" data-target="sec-dashboard"><a href="#"><span class="icon">📊</span> Dashboard</a></li>
             <li data-target="sec-crm"><a href="#"><span class="icon">👥</span> Clientes (CRM)</a></li>
             <li data-target="sec-quotes"><a href="#"><span class="icon">📨</span> Cotizaciones</a></li>
-            <li data-target="sec-kits"><a href="#"><span class="icon">📦</span> Kits / Promociones</a></li>
+            <li data-target="sec-promos"><a href="#"><span class="icon">🏷️</span> Promociones</a></li>
             <li><a href="#" onclick="logout(); return false;"><span class="icon">🚪</span> Salir</a></li>
         </ul>
     </aside>
@@ -266,43 +266,94 @@
                 </div>
             </section>
 
-            <!-- ===================== 4. KITS / PROMOCIONES ===================== -->
-            <section id="sec-kits" class="content-section">
+            <!-- ===================== 4. PROMOCIONES ===================== -->
+            <section id="sec-promos" class="content-section">
                 <div class="page-title">
-                    <h1>📦 Kits y Promociones</h1>
-                    <p>Crea kits solares eligiendo componentes del catálogo. Se muestran automáticamente en la página de Productos.</p>
+                    <h1>🏷️ Gestión de Promociones</h1>
+                    <p>Crea promociones y ofertas especiales que se mostrarán en la página de Promociones.</p>
                 </div>
 
                 <div class="data-section glass-panel">
                     <div class="section-header-admin">
-                        <h2>Catálogo de Kits</h2>
-                        <button class="btn-success" onclick="showKitModal()">+ Crear Kit</button>
+                        <h2>Catálogo de Promociones</h2>
+                        <button class="btn-success" onclick="showPromoModal()">+ Crear Promoción</button>
                     </div>
 
                     <div class="table-responsive" style="margin-top:1rem;">
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Kit / Promoción</th>
-                                    <th>Capacidad</th>
-                                    <th>Precio</th>
-                                    <th>Stock</th>
-                                    <th>Estado</th>
+                                    <th>Promoción</th>
+                                    <th>Precio Original</th>
+                                    <th>Precio Promo</th>
+                                    <th>Etiqueta</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody id="kitsTableBody">
-                                <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray-400);">Cargando kits...</td></tr>
+                            <tbody id="promosTableBody">
+                                <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--gray-400);">Cargando promociones...</td></tr>
                             </tbody>
                         </table>
                     </div>
-
-                    <div id="kitsPaginationContainer" style="margin-top:1.5rem;display:flex;justify-content:center;"></div>
                 </div>
             </section>
 
         </div>
     </main>
+
+    <!-- Modal Promociones -->
+    <div id="promoModal" class="modal-overlay">
+        <div class="modal-content glass-panel" style="max-width: 600px; width: 90%;">
+            <div class="modal-header">
+                <h3 id="promoModalTitle">Crear Promoción</h3>
+                <button class="modal-close" onclick="closePromoModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="promoForm">
+                    <div class="admin-form-group">
+                        <label for="promoTitle">Título de la Promoción *</label>
+                        <input type="text" id="promoTitle" class="admin-input" required placeholder="Ej: Kit Residencial Básico">
+                    </div>
+                    <div class="admin-form-group">
+                        <label for="promoDesc">Descripción Corta *</label>
+                        <textarea id="promoDesc" class="admin-textarea" required rows="2" placeholder="Ej: Perfecto para hogares pequeños."></textarea>
+                    </div>
+                    <div class="grid-2">
+                        <div class="admin-form-group">
+                            <label for="promoOrigPrice">Precio Original (Opcional)</label>
+                            <input type="text" id="promoOrigPrice" class="admin-input" placeholder="Ej: $65,000 MXN">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="promoPrice">Precio Promoción *</label>
+                            <input type="text" id="promoPrice" class="admin-input" required placeholder="Ej: $54,999 MXN">
+                        </div>
+                    </div>
+                    <div class="grid-3">
+                        <div class="admin-form-group">
+                            <label for="promoBadge">Texto Etiqueta *</label>
+                            <input type="text" id="promoBadge" class="admin-input" required placeholder="Ej: ¡Más Vendido!">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="promoBadgeColor">Color Etiqueta</label>
+                            <input type="color" id="promoBadgeColor" class="admin-input" style="padding: 0; height: 42px;" value="#ef4444">
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="promoIcon">Icono (Emoji) *</label>
+                            <input type="text" id="promoIcon" class="admin-input" required placeholder="Ej: 🏷️">
+                        </div>
+                    </div>
+                    <div class="admin-form-group">
+                        <label for="promoFeatures">Características (separadas por coma) *</label>
+                        <textarea id="promoFeatures" class="admin-textarea" required rows="3" placeholder="Ej: 4 Paneles de 550W, Inversor de cadena, Trámite ante CFE gratis"></textarea>
+                    </div>
+                    <div style="display:flex; gap:1rem; margin-top:2rem;">
+                        <button type="submit" class="btn-success" style="flex:1;">Guardar Promoción</button>
+                        <button type="button" class="btn-danger" style="flex:1;" onclick="closePromoModal()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- App Logic -->
     <script>
@@ -545,8 +596,10 @@
                         setTimeout(initChart, 200);
                     });
 
-                    // Cargar kits desde localStorage
-                    loadKits();
+                    // Cargar promociones
+                    if (typeof loadPromos === 'function') {
+                        loadPromos();
+                    }
                 } else {
                     console.log("No hay sesión activa");
                     window.location.replace('login.html');

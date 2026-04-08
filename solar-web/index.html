@@ -42,6 +42,7 @@
 
       <ul class="nav-links" id="navLinks">
         <li><a href="index.html" class="active">Inicio</a></li>
+        <li><a href="promociones.html">Promociones</a></li>
         <li><a href="servicios.html">Servicios</a></li>
         <li><a href="productos.html">Productos</a></li>
         <li><a href="proyectos.html">Proyectos</a></li>
@@ -233,71 +234,8 @@
         <p>Da el paso hacia la energía solar con descuentos exclusivos por tiempo limitado.</p>
       </div>
 
-      <div class="services-grid">
-        <div class="service-card reveal" style="border: 2px solid var(--primary); transform: scale(1.05); z-index: 2;">
-          <div class="service-img-wrapper" style="height: 180px; display: flex; align-items: center; justify-content: center; background: rgba(249, 115, 22, 0.1);">
-            <div style="font-size: 4rem;">🏷️</div>
-            <span class="service-tag-badge" style="background: #ef4444;">¡Más Vendido!</span>
-          </div>
-          <div class="service-body">
-            <h3>Kit Residencial Básico</h3>
-            <div style="margin: 1rem 0;">
-                <span style="text-decoration: line-through; color: var(--gray-400); font-size: 0.9rem;">$65,000 MXN</span>
-                <span style="color: var(--primary); font-size: 1.8rem; font-weight: 700; display: block;">$54,999 MXN</span>
-            </div>
-            <p>Perfecto para hogares pequeños. Reduce hasta un 60% tu recibo bimestral.</p>
-            <ul class="service-features">
-              <li>4 Paneles de 550W</li>
-              <li>Inversor de cadena</li>
-              <li>Instalación estándar incluida</li>
-              <li>Trámite ante CFE gratis</li>
-            </ul>
-            <a href="contacto.html?promo=basico" class="btn-primary" style="width: 100%; text-align: center; display: block; margin-top: 1rem; box-sizing: border-box;">Aprovechar Oferta</a>
-          </div>
-        </div>
-
-        <div class="service-card reveal">
-          <div class="service-img-wrapper" style="height: 180px; display: flex; align-items: center; justify-content: center; background: rgba(16, 185, 129, 0.1);">
-            <div style="font-size: 4rem;">🔋</div>
-            <span class="service-tag-badge" style="background: #10b981;">Premium</span>
-          </div>
-          <div class="service-body">
-            <h3>Kit Residencial Plus</h3>
-            <div style="margin: 1rem 0;">
-                <span style="text-decoration: line-through; color: var(--gray-400); font-size: 0.9rem;">$110,000 MXN</span>
-                <span style="color: var(--primary); font-size: 1.8rem; font-weight: 700; display: block;">$92,500 MXN</span>
-            </div>
-            <p>Ideal para hogares con alto consumo o aires acondicionados.</p>
-            <ul class="service-features">
-              <li>8 Paneles de 550W</li>
-              <li>Microinversores</li>
-              <li>Monitoreo por panel individual</li>
-              <li>Mantenimiento gratis 1er año</li>
-            </ul>
-            <a href="contacto.html?promo=plus" class="btn-card" style="width: 100%; text-align: center; display: block; margin-top: 1rem; box-sizing: border-box;">Solicitar Información</a>
-          </div>
-        </div>
-        
-        <div class="service-card reveal">
-          <div class="service-img-wrapper" style="height: 180px; display: flex; align-items: center; justify-content: center; background: rgba(59, 130, 246, 0.1);">
-            <div style="font-size: 4rem;">💳</div>
-            <span class="service-tag-badge" style="background: #3b82f6;">Facilidades</span>
-          </div>
-          <div class="service-body">
-            <h3>Meses Sin Intereses</h3>
-            <div style="margin: 1rem 0;">
-                <span style="color: var(--primary); font-size: 1.8rem; font-weight: 700; display: block;">Hasta 12 MSI</span>
-            </div>
-            <p>Financia tu sistema solar pagando cómodas mensualidades con tarjetas participantes.</p>
-            <ul class="service-features">
-              <li>Aplica en todos los paquetes</li>
-              <li>Aprobación inmediata</li>
-              <li>Sin enganche requerido</li>
-              <li>Tarjetas Visa, Mastercard y AMEX</li>
-            </ul>
-            <a href="contacto.html?promo=msi" class="btn-card" style="width: 100%; text-align: center; display: block; margin-top: 1rem; box-sizing: border-box;">Cotizar a MSI</a>
-          </div>
-        </div>
+      <div class="services-grid" id="homePromosGrid">
+          <!-- Las promociones se cargarán dinámicamente aquí mediante JS -->
       </div>
     </div>
   </section>

@@ -254,3 +254,85 @@ if ('IntersectionObserver' in window) {
 /* --- Año dinámico en footer --- */
 const yearEl = document.getElementById('currentYear');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Cargar promociones dinámicas
+    loadPromotions();
+});
+
+function loadPromotions() {
+    const promosGrid = document.getElementById('promosGrid') || document.getElementById('homePromosGrid');
+    if (!promosGrid) return;
+
+    let promos = JSON.parse(localStorage.getItem('solar_promotions')) || [];
+
+    if (promos.length === 0) {
+        // Fallback promos just in case
+        promos = [
+            {
+                id: 1,
+                title: "Kit Residencial Básico",
+                description: "Perfecto para hogares pequeños. Reduce hasta un 60% tu recibo bimestral.",
+                originalPrice: "$65,000 MXN",
+                promoPrice: "$54,999 MXN",
+                badge: "¡Más Vendido!",
+                badgeColor: "#ef4444",
+                icon: "🏷️",
+                features: "4 Paneles de 550W, Inversor de cadena, Instalación estándar incluida, Trámite ante CFE gratis"
+            },
+            {
+                id: 2,
+                title: "Kit Residencial Plus",
+                description: "Ideal para hogares con alto consumo o aires acondicionados.",
+                originalPrice: "$110,000 MXN",
+                promoPrice: "$92,500 MXN",
+                badge: "Premium",
+                badgeColor: "#10b981",
+                icon: "🔋",
+                features: "8 Paneles de 550W, Microinversores, Monitoreo por panel individual, Mantenimiento gratis 1er año"
+            },
+            {
+                id: 3,
+                title: "Meses Sin Intereses",
+                description: "Financia tu sistema solar pagando cómodas mensualidades con tarjetas participantes.",
+                originalPrice: "",
+                promoPrice: "Hasta 12 MSI",
+                badge: "Facilidades",
+                badgeColor: "#3b82f6",
+                icon: "💳",
+                features: "Aplica en todos los paquetes, Aprobación inmediata, Sin enganche requerido, Tarjetas Visa, Mastercard y AMEX"
+            }
+        ];
+        localStorage.setItem('solar_promotions', JSON.stringify(promos));
+    }
+
+    promosGrid.innerHTML = '';
+
+    promos.forEach(promo => {
+        const featuresList = promo.features.split(',').map(f => `<li>${f.trim()}</li>`).join('');
+        const origPriceHtml = promo.originalPrice ? `<span style="text-decoration: line-through; color: var(--gray-400); font-size: 0.9rem;">${promo.originalPrice}</span>` : '';
+        
+        const card = document.createElement('div');
+        card.className = 'service-card reveal';
+        card.style.border = `2px solid ${promo.badgeColor}`;
+        card.innerHTML = `
+            <div class="service-img-wrapper" style="height: 180px; display: flex; align-items: center; justify-content: center; background: ${promo.badgeColor}15;">
+                <div style="font-size: 4rem;">${promo.icon}</div>
+                <span class="service-tag-badge" style="background: ${promo.badgeColor};">${promo.badge}</span>
+            </div>
+            <div class="service-body">
+                <h3>${promo.title}</h3>
+                <div style="margin: 1rem 0;">
+                    ${origPriceHtml}
+                    <span style="color: var(--primary); font-size: 1.8rem; font-weight: 700; display: block;">${promo.promoPrice}</span>
+                </div>
+                <p>${promo.description}</p>
+                <ul class="service-features">
+                    ${featuresList}
+                </ul>
+                <a href="contacto.html?promo=${promo.id}" class="btn-primary" style="width: 100%; text-align: center; display: block; margin-top: 1rem; box-sizing: border-box; background-color: ${promo.badgeColor}; border-color: ${promo.badgeColor};">Aprovechar Oferta</a>
+            </div>
+        `;
+        promosGrid.appendChild(card);
+    });
+}
