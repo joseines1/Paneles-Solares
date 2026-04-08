@@ -260,9 +260,21 @@ document.addEventListener('DOMContentLoaded', function() {
     loadPromotions();
 });
 
-function loadPromotions() {
-    const promosGrid = document.getElementById('promosGrid') || document.getElementById('homePromosGrid');
-    if (!promosGrid) return;
+// Escuchar cambios en localStorage (cuando el admin edita promociones en otra pestaña)
+window.addEventListener('storage', function(e) {
+    if (e.key === 'solar_promotions' || !e.key) { // !e.key cubre nuestro custom dispatchEvent
+        loadPromotions();
+    }
+});
+
+// Función para cargar promociones en cualquier grid que la requiera
+window.loadPromotions = function() {
+    // Buscar tanto el grid de la home como el grid de la página de promociones
+    const homePromosGrid = document.getElementById('homePromosGrid');
+    const promosGrid = document.getElementById('promosGrid');
+    
+    // Si no existe ninguno, salir
+    if (!homePromosGrid && !promosGrid) return;
 
     let promos = JSON.parse(localStorage.getItem('solar_promotions')) || [];
 
@@ -306,33 +318,41 @@ function loadPromotions() {
         localStorage.setItem('solar_promotions', JSON.stringify(promos));
     }
 
-    promosGrid.innerHTML = '';
-
-    promos.forEach(promo => {
-        const featuresList = promo.features.split(',').map(f => `<li>${f.trim()}</li>`).join('');
-        const origPriceHtml = promo.originalPrice ? `<span style="text-decoration: line-through; color: var(--gray-400); font-size: 0.9rem;">${promo.originalPrice}</span>` : '';
+    // Función auxiliar para renderizar tarjetas en un contenedor específico
+    const renderCards = (container) => {
+        if (!container) return;
+        container.innerHTML = '';
         
-        const card = document.createElement('div');
-        card.className = 'service-card reveal';
-        card.style.border = `2px solid ${promo.badgeColor}`;
-        card.innerHTML = `
-            <div class="service-img-wrapper" style="height: 180px; display: flex; align-items: center; justify-content: center; background: ${promo.badgeColor}15;">
-                <div style="font-size: 4rem;">${promo.icon}</div>
-                <span class="service-tag-badge" style="background: ${promo.badgeColor};">${promo.badge}</span>
-            </div>
-            <div class="service-body">
-                <h3>${promo.title}</h3>
-                <div style="margin: 1rem 0;">
-                    ${origPriceHtml}
-                    <span style="color: var(--primary); font-size: 1.8rem; font-weight: 700; display: block;">${promo.promoPrice}</span>
+        promos.forEach(promo => {
+            const featuresList = promo.features.split(',').map(f => `<li>${f.trim()}</li>`).join('');
+            const origPriceHtml = promo.originalPrice ? `<span style="text-decoration: line-through; color: var(--gray-400); font-size: 0.9rem;">${promo.originalPrice}</span>` : '';
+            
+            const card = document.createElement('div');
+            card.className = 'service-card reveal visible'; // Agregamos visible para que se muestren de inmediato
+            card.style.border = `2px solid ${promo.badgeColor}`;
+            card.innerHTML = `
+                <div class="service-img-wrapper" style="height: 180px; display: flex; align-items: center; justify-content: center; background: ${promo.badgeColor}15;">
+                    <div style="font-size: 4rem;">${promo.icon}</div>
+                    <span class="service-tag-badge" style="background: ${promo.badgeColor};">${promo.badge}</span>
                 </div>
-                <p>${promo.description}</p>
-                <ul class="service-features">
-                    ${featuresList}
-                </ul>
-                <a href="contacto.html?promo=${promo.id}" class="btn-primary" style="width: 100%; text-align: center; display: block; margin-top: 1rem; box-sizing: border-box; background-color: ${promo.badgeColor}; border-color: ${promo.badgeColor};">Aprovechar Oferta</a>
-            </div>
-        `;
-        promosGrid.appendChild(card);
-    });
-}
+                <div class="service-body">
+                    <h3>${promo.title}</h3>
+                    <div style="margin: 1rem 0;">
+                        ${origPriceHtml}
+                        <span style="color: var(--primary); font-size: 1.8rem; font-weight: 700; display: block;">${promo.promoPrice}</span>
+                    </div>
+                    <p>${promo.description}</p>
+                    <ul class="service-features">
+                        ${featuresList}
+                    </ul>
+                    <a href="contacto.html?promo=${promo.id}" class="btn-primary" style="width: 100%; text-align: center; display: block; margin-top: 1rem; box-sizing: border-box; background-color: ${promo.badgeColor}; border-color: ${promo.badgeColor};">Aprovechar Oferta</a>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    };
+
+    // Renderizar en todos los contenedores que existan
+    renderCards(homePromosGrid);
+    renderCards(promosGrid);
+};

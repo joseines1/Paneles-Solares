@@ -148,6 +148,9 @@ function savePromo(event) {
     localStorage.setItem('solar_promotions', JSON.stringify(promos));
     renderPromos();
     closePromoModal();
+    
+    // Forzar actualización en otras pestañas si están abiertas
+    window.dispatchEvent(new Event('storage'));
 }
 
 function deletePromo(id) {
@@ -155,6 +158,9 @@ function deletePromo(id) {
         promos = promos.filter(p => p.id !== id);
         localStorage.setItem('solar_promotions', JSON.stringify(promos));
         renderPromos();
+        
+        // Forzar actualización en otras pestañas si están abiertas
+        window.dispatchEvent(new Event('storage'));
     }
 }
 
