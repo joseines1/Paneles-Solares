@@ -174,69 +174,16 @@ function initProjectFilter() {
 
 initProjectFilter();
 
-/* --- Formulario de contacto --- */
+/* --- Formulario de contacto (manejado por formsubmit.co) --- */
 function initContactForm() {
-    const form = document.getElementById('contactForm');
+    // El formulario usa action="https://formsubmit.co/..." para enviar por email.
+    // No se requiere JS adicional. Solo mostramos el mensaje de éxito si hay ?success=1
     const success = document.getElementById('formSuccess');
-
-    if (!form) return;
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const btn = form.querySelector('.form-submit');
-        const originalBtnText = btn.innerHTML;
-        btn.innerHTML = '⏳ Enviando...';
-        btn.disabled = true;
-
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-
-        try {
-            // Guardar en Supabase
-            if (typeof supabaseClient !== 'undefined') {
-                const { error } = await supabaseClient
-                    .from('contact_messages')
-                    .insert([
-                        {
-                            nombre: data.nombre,
-                            empresa: data.empresa || null,
-                            email: data.email,
-                            telefono: data.telefono,
-                            servicio: data.servicio,
-                            factura: data.factura,
-                            mensaje: data.mensaje,
-                            status: 'Nuevo'
-                        }
-                    ]);
-                
-                if (error) throw error;
-            } else {
-                console.warn("Supabase no está inicializado. Fallback a LocalStorage.");
-                // Fallback a LocalStorage por si acaso
-                let quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
-                const newQuote = {
-                    id: Date.now(),
-                    ...data,
-                    fecha: new Date().toISOString(),
-                    status: 'Nuevo'
-                };
-                quotes.unshift(newQuote);
-                localStorage.setItem('solar_quotes', JSON.stringify(quotes));
-            }
-
-            form.style.display = 'none';
-            success.style.display = 'block';
-            success.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } catch (error) {
-            console.error('Error enviando formulario:', error);
-            btn.innerHTML = '❌ Error al enviar. Reintentar';
-            btn.disabled = false;
-            setTimeout(() => {
-                btn.innerHTML = originalBtnText;
-            }, 3000);
-        }
-    });
+    if (success && new URLSearchParams(location.search).get('success') === '1') {
+        const form = document.getElementById('contactForm');
+        if (form) form.style.display = 'none';
+        success.style.display = 'block';
+    }
 }
 
 initContactForm();
@@ -307,15 +254,3 @@ if ('IntersectionObserver' in window) {
 /* --- Año dinámico en footer --- */
 const yearEl = document.getElementById('currentYear');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
-
-/* --- Verificar que Supabase está cargado --- */
-document.addEventListener('DOMContentLoaded', function() {
-    // Pequeña verificación para asegurar que Supabase está disponible
-    setTimeout(() => {
-        if (typeof window.supabase === 'undefined') {
-            console.warn('Supabase no está cargado. Algunas funciones pueden no funcionar.');
-        } else {
-            console.log('Supabase cargado correctamente.');
-        }
-    }, 1000);
-});

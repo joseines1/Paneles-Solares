@@ -21,8 +21,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/estilos.css?v=1.0.0" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js"></script>
+    <script src="js/supabase-config.js?v=2.0.0"></script>
     <style>
         .products-tabs {
             display: flex;
@@ -316,38 +315,31 @@
     <script src="js/script.js?v=1.0.0"></script>
     
     <script>
-        // Cargar kits dinámicos desde Supabase
-        async function loadKitsFromSupabase() {
+        // Cargar kits desde localStorage (guardados por el admin)
+        function loadKitsFromSupabase() {
             const kitsContainer = document.getElementById('kitsContainer');
-            
-            try {
-                if (typeof supabaseClient !== 'undefined') {
-                    const { data, error } = await supabaseClient
-                        .from('kits')
-                        .select('*')
-                        .eq('is_active', true)
-                        .order('id', { ascending: false });
-                    
-                    if (error) {
-                        console.error('Error cargando kits:', error);
-                        return;
-                    }
-                    
-                    if (data && data.length > 0) {
-                        console.log(`Cargados ${data.length} kits de Supabase`);
-                        
-                        data.forEach(kit => {
-                            const kitCard = createKitCard(kit);
-                            kitsContainer.appendChild(kitCard);
-                        });
-                    } else {
-                        // Si no hay kits, no mostrar nada, solo dejar el contenedor vacío
-                        console.log('No hay kits activos en la base de datos');
-                    }
-                }
-            } catch (error) {
-                console.error('Error en la carga de kits:', error);
+            const kits = JSON.parse(localStorage.getItem('solar_kits') || '[]');
+            const activos = kits.filter(k => k.is_active !== false);
+
+            if (!activos.length) {
+                kitsContainer.innerHTML = `
+                    <div style="width:100%;text-align:center;padding:4rem 2rem;color:var(--gray-400);">
+                        <div style="font-size:3rem;margin-bottom:1rem;">☀️</div>
+                        <h3 style="color:var(--gray-300);">Próximamente</h3>
+                        <p>Estamos preparando nuestra catálogo de kits. Contáctanos para una cotización personalizada.</p>
+                        <a href="contacto.html" class="btn-primary" style="display:inline-block;margin-top:1rem;">Solicitar cotización</a>
+                    </div>`;
+                return;
             }
+
+            activos.forEach(kit => {
+                const card = createKitCard(kit);
+                kitsContainer.appendChild(card);
+            });
+
+            // Actualizar contador en el tab
+            const tab = document.getElementById('tabTodos');
+            if (tab) tab.textContent = `Kits Solares (${activos.length})`;
         }
         
         // Crear tarjeta de kit

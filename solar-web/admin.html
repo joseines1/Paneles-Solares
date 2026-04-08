@@ -18,11 +18,10 @@
     
     <!-- Chart.js para las gráficas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase-config.js"></script>
-    <script src="admin-real-data.js"></script>
-    <script src="admin-search-filter.js"></script>
-    <script src="admin-kits.js"></script>
+    <script src="js/supabase-config.js?v=2.0.0"></script>
+    <script src="admin-real-data.js?v=2.0.0"></script>
+    <script src="admin-search-filter.js?v=2.0.0"></script>
+    <script src="admin-kits.js?v=2.0.0"></script>
 
     <style>
         /* Tabs System */
@@ -95,7 +94,7 @@
             <li class="active" data-target="sec-dashboard"><a href="#"><span class="icon">📊</span> Dashboard</a></li>
             <li data-target="sec-crm"><a href="#"><span class="icon">👥</span> Clientes (CRM)</a></li>
             <li data-target="sec-quotes"><a href="#"><span class="icon">📨</span> Cotizaciones</a></li>
-            <li data-target="sec-kits"><a href="#"><span class="icon">🔋</span> Kits Solares</a></li>
+            <li data-target="sec-kits"><a href="#"><span class="icon">📦</span> Kits / Promociones</a></li>
             <li><a href="#" onclick="logout(); return false;"><span class="icon">🚪</span> Salir</a></li>
         </ul>
     </aside>
@@ -267,23 +266,24 @@
                 </div>
             </section>
 
-            <!-- ===================== KITS SOLARES ===================== -->
+            <!-- ===================== 4. KITS / PROMOCIONES ===================== -->
             <section id="sec-kits" class="content-section">
                 <div class="page-title">
-                    <h1>Gestión de Kits Solares</h1>
-                    <p>Catálogo de productos y gestión de inventario.</p>
+                    <h1>📦 Kits y Promociones</h1>
+                    <p>Crea kits solares eligiendo componentes del catálogo. Se muestran automáticamente en la página de Productos.</p>
                 </div>
 
                 <div class="data-section glass-panel">
                     <div class="section-header-admin">
                         <h2>Catálogo de Kits</h2>
-                        <button class="btn-success" onclick="showKitModal()">+ Agregar Kit</button>
+                        <button class="btn-success" onclick="showKitModal()">+ Crear Kit</button>
                     </div>
-                    <div class="table-responsive">
+
+                    <div class="table-responsive" style="margin-top:1rem;">
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Kit / Categoría</th>
+                                    <th>Kit / Promoción</th>
                                     <th>Capacidad</th>
                                     <th>Precio</th>
                                     <th>Stock</th>
@@ -292,18 +292,14 @@
                                 </tr>
                             </thead>
                             <tbody id="kitsTableBody">
-                                <!-- Populated dynamically -->
+                                <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray-400);">Cargando kits...</td></tr>
                             </tbody>
                         </table>
                     </div>
-                    <div id="kitsPaginationContainer"></div>
+
+                    <div id="kitsPaginationContainer" style="margin-top:1.5rem;display:flex;justify-content:center;"></div>
                 </div>
             </section>
-
-            <!-- ===================== 4. SECCIONES ELIMINADAS ===================== -->
-            <!-- Las secciones de Servicios, CMS, Mensajes, Usuarios, Editar Página y Funciones Pro 
-                 han sido eliminadas para simplificar el panel y mantener solo 
-                 las funcionalidades principales que funcionan correctamente. -->
 
         </div>
     </main>
@@ -353,117 +349,6 @@
                         quotes = [];
                         console.log("No hay contactos en Supabase");
                     }
-
-                    // Cargar proyectos
-                    try {
-                        const { data: projectsData, error: projectsError } = await supabaseClient
-                            .from('projects')
-                            .select('*')
-                            .order('created_at', { ascending: false });
-                        
-                        if (!projectsError && projectsData) {
-                            window.projectsData = projectsData;
-                            console.log(`Cargados ${projectsData.length} proyectos de Supabase`);
-                        }
-                    } catch (err) {
-                        console.log("Error cargando proyectos:", err);
-                        window.projectsData = [];
-                    }
-
-                    // Cargar citas
-                    try {
-                        const { data: appointmentsData, error: appointmentsError } = await supabaseClient
-                            .from('appointments')
-                            .select('*')
-                            .order('appointment_date', { ascending: false });
-                        
-                        if (!appointmentsError && appointmentsData) {
-                            window.appointmentsData = appointmentsData;
-                            console.log(`Cargadas ${appointmentsData.length} citas de Supabase`);
-                        }
-                    } catch (err) {
-                        console.log("Error cargando citas:", err);
-                        window.appointmentsData = [];
-                    }
-
-                    // Cargar servicios
-                    try {
-                        const { data: servicesData, error: servicesError } = await supabaseClient
-                            .from('services')
-                            .select('*')
-                            .order('name', { ascending: true });
-                        
-                        if (!servicesError && servicesData) {
-                            window.servicesData = servicesData;
-                            console.log(`Cargados ${servicesData.length} servicios de Supabase`);
-                        }
-                    } catch (err) {
-                        console.log("Error cargando servicios:", err);
-                        window.servicesData = [];
-                    }
-
-                    // Cargar comunicaciones
-                    try {
-                        const { data: communicationsData, error: communicationsError } = await supabaseClient
-                            .from('communications')
-                            .select('*')
-                            .order('created_at', { ascending: false });
-                        
-                        if (!communicationsError && communicationsData) {
-                            window.communicationsData = communicationsData;
-                            console.log(`Cargadas ${communicationsData.length} comunicaciones de Supabase`);
-                        }
-                    } catch (err) {
-                        console.log("Error cargando comunicaciones:", err);
-                        window.communicationsData = [];
-                    }
-
-                    // Cargar kits solares
-                    try {
-                        const { data: kitsData, error: kitsError } = await supabaseClient
-                            .from('kits')
-                            .select('*')
-                            .order('created_at', { ascending: false });
-                        
-                        if (!kitsError && kitsData) {
-                            window.kitsData = kitsData;
-                            console.log(`Cargados ${kitsData.length} kits de Supabase`);
-                        }
-                    } catch (err) {
-                        console.log("Error cargando kits:", err);
-                        window.kitsData = [];
-                    }
-
-                    // Cargar documentos
-                    try {
-                        const { data: documentsData, error: documentsError } = await supabaseClient
-                            .from('documents')
-                            .select('*')
-                            .order('created_at', { ascending: false });
-                        
-                        if (!documentsError && documentsData) {
-                            window.documentsData = documentsData;
-                            console.log(`Cargados ${documentsData.length} documentos de Supabase`);
-                        }
-                    } catch (err) {
-                        console.log("Error cargando documentos:", err);
-                        window.documentsData = [];
-                    }
-
-                    // Cargar estadísticas del dashboard
-                    try {
-                        const { data: statsData, error: statsError } = await supabaseClient
-                            .rpc('get_dashboard_stats');
-                        
-                        if (!statsError && statsData) {
-                            window.dashboardStats = statsData;
-                            console.log("Estadísticas cargadas:", statsData);
-                        }
-                    } catch (err) {
-                        console.log("Error cargando estadísticas:", err);
-                        window.dashboardStats = null;
-                    }
-
                 } else {
                     // Fallback a localStorage
                     quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
@@ -658,12 +543,10 @@
                         initializeSearchFilters();
                         renderFilteredData();
                         setTimeout(initChart, 200);
-                        
-                        // Cargar kits si estamos en la sección de kits
-                        if (typeof loadKits === 'function') {
-                            loadKits();
-                        }
                     });
+
+                    // Cargar kits desde localStorage
+                    loadKits();
                 } else {
                     console.log("No hay sesión activa");
                     window.location.replace('login.html');
