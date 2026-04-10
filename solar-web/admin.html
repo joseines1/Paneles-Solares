@@ -15,11 +15,17 @@
     <link rel="stylesheet" href="css/admin-pagination.css?v=1.0.0" />
     <link rel="stylesheet" href="css/admin-access.css?v=1.0.0" />
     <link rel="stylesheet" href="css/admin-modal.css?v=1.0.0" />
+    <link rel="stylesheet" href="css/admin-quotations.css?v=1.0.0" />
     
     <!-- Chart.js para las gráficas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/supabase-config.js?v=2.0.0"></script>
+    <!-- jsPDF para generar cotizaciones en PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script src="js/auth-config.js?v=1.0.0"></script>
+    <script src="js/seed-data.js?v=1.0.0"></script>
     <script src="admin-real-data.js?v=2.0.0"></script>
+    <script src="admin-quotations.js?v=1.0.0"></script>
     <script src="admin-search-filter.js?v=2.0.0"></script>
     <script src="admin-kits.js?v=1.0.0"></script>
     <script src="admin-promos.js?v=1.0.0"></script>
@@ -60,7 +66,7 @@
     </style>
 
     <script>
-        // Authentication Guard with Supabase
+        // Authentication Guard - Check session before allowing access
         checkSession().then(session => {
             if (!session) {
                 console.log("No hay sesión en admin, redirigiendo a login...");
@@ -74,7 +80,7 @@
         });
 
         async function logout() {
-            await supabaseClient.auth.signOut();
+            await authClient.signOut();
             window.location.replace('login.html');
         }
     </script>
@@ -95,8 +101,8 @@
             <li class="active" data-target="sec-dashboard"><a href="#"><span class="icon">📊</span> Dashboard</a></li>
             <li data-target="sec-crm"><a href="#"><span class="icon">👥</span> Clientes (CRM)</a></li>
             <li data-target="sec-quotes"><a href="#"><span class="icon">📨</span> Cotizaciones</a></li>
-            <li data-target="sec-kits"><a href="#"><span class="icon">📦</span> Productos / Kits</a></li>
-            <li data-target="sec-promos"><a href="#"><span class="icon">🏷️</span> Promociones</a></li>
+            <li data-target="sec-kits"><a href="#"><span class="icon">📦</span> Catálogo de Productos</a></li>
+            <li data-target="sec-promos"><a href="#"><span class="icon">🏷️</span> Kits y Ofertas</a></li>
             <li><a href="#" onclick="logout(); return false;"><span class="icon">🚪</span> Salir</a></li>
         </ul>
     </aside>
@@ -240,26 +246,18 @@
             <!-- ===================== 3. COTIZACIONES ===================== -->
             <section id="sec-quotes" class="content-section">
                 <div class="page-title">
-                    <h1>Sistema de Cotizaciones</h1>
-                    <p>Calcula paneles, visualiza solicitudes web y exporta propuestas a PDF.</p>
+                    <h1>🎯 Sistema de Cotizaciones con Pipeline</h1>
+                    <p>Realiza seguimiento del flujo de ventas: desde cotización hasta instalación completada. Genera PDFs y comparte por Email/WhatsApp.</p>
                 </div>
 
                 <div class="data-section glass-panel">
                     <div class="section-header-admin">
-                        <h2>Generador y Lista</h2>
+                        <h2>📊 Cotizaciones en Proceso</h2>
                         <button class="btn-success" onclick="alert('Abriendo generador avanzado de cotizaciones (Calculadora de paneles)...')">+ Nueva Cotización</button>
                     </div>
                     <div class="table-responsive">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th onclick="sortBy('nombre')" style="cursor: pointer;">Cliente / Empresa ↕</th>
-                                    <th onclick="sortBy('servicio')" style="cursor: pointer;">Servicio ↕</th>
-                                    <th onclick="sortBy('created_at')" style="cursor: pointer;">Fecha ↕</th>
-                                    <th onclick="sortBy('status')" style="cursor: pointer;">Estado ↕</th>
-                                    <th>Acciones Rápidas</th>
-                                </tr>
-                            </thead>
+                        <table class="admin-table" style="width: 100%; border-collapse: collapse;">
+                            <thead style="display: none;"></thead>
                             <tbody id="quotesTableBody">
                                 <!-- Populated dynamically -->
                             </tbody>
@@ -381,6 +379,13 @@
                         <label for="kitFeatures">Características Principales (separadas por coma) *</label>
                         <textarea id="kitFeatures" class="admin-textarea" required rows="2" placeholder="Ej: 10 Paneles de 500W, Inversor Central, Estructura de aluminio"></textarea>
                     </div>
+                    <div class="admin-form-group">
+                        <label>Imagen del Producto (Opcional)</label>
+                        <p style="font-size:0.75rem; color:var(--gray-400); margin-bottom:0.5rem;">Puedes subir un archivo de tu computadora (se guardará internamente) o pegar una ruta.</p>
+                        <input type="file" id="kitImageFile" accept="image/*" class="admin-input" style="margin-bottom: 0.5rem; padding: 0.5rem; cursor:pointer;">
+                        <input type="text" id="kitImageURL" class="admin-input" placeholder="O pega la URL/ruta (ej: img/bateria.png)">
+                        <img id="kitImagePreview" src="" style="display:none; width: 100%; max-height: 150px; object-fit: contain; margin-top: 0.5rem; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
+                    </div>
                     <div style="display:flex; gap:1rem; margin-top:2rem;">
                         <button type="submit" class="btn-success" style="flex:1;">Guardar Producto</button>
                         <button type="button" class="btn-danger" style="flex:1;" onclick="closeKitModal()">Cancelar</button>
@@ -400,11 +405,11 @@
             <div class="modal-body">
                 <form id="promoForm">
                     <div class="admin-form-group">
-                        <label for="promoProductSelect">Vincular a Producto / Kit (Opcional)</label>
-                        <select id="promoProductSelect" class="admin-select">
-                            <option value="">-- Seleccionar un Producto --</option>
+                        <label for="promoProductSelect">Vincular a Productos / Kits (Múltiple, Opcional)</label>
+                        <select id="promoProductSelect" class="admin-select" multiple style="height: auto; min-height: 100px; padding: 0.5rem;" onchange="updatePromoLinkedImagesPreview()">
                         </select>
-                        <p style="font-size:0.75rem; color:var(--gray-400); margin-top:0.25rem;">Si seleccionas un producto, al hacer clic en la promoción el usuario podrá ver los detalles del producto.</p>
+                        <p style="font-size:0.75rem; color:var(--gray-400); margin-top:0.25rem;">Mantén presionada la tecla Ctrl (Cmd en Mac) para seleccionar varios. Las imágenes de estos productos conformarán la gráfica de la promoción de forma automática.</p>
+                        <div id="promoLinkedImagesPreview" style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
                     </div>
                     <div class="admin-form-group">
                         <label for="promoTitle">Título de la Promoción *</label>
@@ -479,32 +484,8 @@
         let quotes = [];
 
         async function loadData() {
-            try {
-                if (typeof supabaseClient !== 'undefined') {
-                    // Cargar datos principales de contactos
-                    const { data: contactData, error: contactError } = await supabaseClient
-                        .from('contact_messages')
-                        .select('*')
-                        .order('created_at', { ascending: false });
-                    
-                    if (contactError) throw contactError;
-                    
-                    if (contactData && contactData.length > 0) {
-                        quotes = contactData;
-                        console.log(`Cargados ${contactData.length} contactos de Supabase`);
-                    } else {
-                        quotes = [];
-                        console.log("No hay contactos en Supabase");
-                    }
-                } else {
-                    // Fallback a localStorage
-                    quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
-                    console.log("Usando datos de localStorage (fallback)");
-                }
-            } catch (err) {
-                console.error("Error general cargando datos de Supabase:", err);
-                quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
-            }
+            quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
+            console.log(`Cargados ${quotes.length} prospectos de localStorage`);
             
             renderAllData();
         }
@@ -548,15 +529,7 @@
             const index = quotes.findIndex(q => q.id === id);
             if (index !== -1) {
                 quotes[index].status = newStatus;
-                if (typeof supabaseClient !== 'undefined') {
-                    const { error } = await supabaseClient
-                        .from('contact_messages')
-                        .update({ status: newStatus })
-                        .eq('id', id);
-                    if (error) console.error('Error actualizando estado:', error);
-                } else {
-                    localStorage.setItem('solar_quotes', JSON.stringify(quotes));
-                }
+                localStorage.setItem('solar_quotes', JSON.stringify(quotes));
                 renderAllData();
             }
         };
@@ -565,15 +538,7 @@
             const index = quotes.findIndex(q => q.id === id);
             if (index !== -1) {
                 quotes[index].crmNote = noteText;
-                if (typeof supabaseClient !== 'undefined') {
-                    const { error } = await supabaseClient
-                        .from('contact_messages')
-                        .update({ crmNote: noteText })
-                        .eq('id', id);
-                    if (error) console.error('Error actualizando nota:', error);
-                } else {
-                    localStorage.setItem('solar_quotes', JSON.stringify(quotes));
-                }
+                localStorage.setItem('solar_quotes', JSON.stringify(quotes));
                 renderAllData();
             }
         };
@@ -718,6 +683,25 @@
 
         menuToggle.addEventListener('click', () => sidebar.classList.add('open'));
         closeSidebar.addEventListener('click', () => sidebar.classList.remove('open'));
+
+        // ==========================
+        // REACTIVIDAD WEB
+        // Actualizar prospectos (Leads) en tiempo real si mandan una cotización en otra pestaña
+        // ==========================
+        window.addEventListener('storage', (e) => {
+            if (!e.key || e.key === 'solar_quotes') {
+                // Si alguien en otra pestaña envía un form de contacto, 
+                // Recargamos silenciosamente los datos para que el admin vea la notificación y fila nueva
+                loadData().then(() => {
+                    initChart(); // Actualiza gráfica de rendimiento
+                    const btnNotif = document.querySelector('.notifications');
+                    if(btnNotif) {
+                        btnNotif.classList.add('active-notif');
+                        btnNotif.innerHTML = '🔔';
+                    }
+                });
+            }
+        });
     </script>
 </body>
 

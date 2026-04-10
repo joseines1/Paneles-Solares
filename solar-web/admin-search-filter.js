@@ -165,7 +165,7 @@ function renderCRMTable(data) {
     });
 }
 
-// Renderizar tabla Cotizaciones
+// Renderizar tabla Cotizaciones con barra de progreso
 function renderQuotesTable(data) {
     const quotesTbody = document.getElementById('quotesTableBody');
     quotesTbody.innerHTML = '';
@@ -176,21 +176,91 @@ function renderQuotesTable(data) {
         const statusText = quote.status || 'Nuevo';
         const badgeClass = statusText === 'En Proceso' ? 'pending' : statusText === 'Cerrado' ? 'closed' : 'new';
         const pkId = quote.id;
+        
+        // Obtener progreso (10%, 20%, 40%, 60%, 80%, 100%)
+        const progress = quote.progress || getProgressFromStatus(statusText);
+        const progressData = QUOTATION_PIPELINE[progress];
 
         const tr2 = document.createElement('tr');
+        tr2.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+        
+        // Fila principal con progreso
         tr2.innerHTML = `
-            <td><div class="client-cell"><strong>${quote.nombre || ''}</strong></div></td>
-            <td>${quote.servicio || '—'}</td>
-            <td>${dateStr}</td>
-            <td><span class="status-badge ${badgeClass}">${statusText}</span></td>
-            <td style="display:flex; gap:8px;">
-                <button class="btn-action" onclick="alert('Generando PDF para ${(quote.nombre||'').replace(/'/g,'')}')">📄 PDF</button>
-                <button class="btn-action" onclick="window.open('https://wa.me/52${(quote.telefono || '').replace(/\D/g,'')}?text=Hola%20${encodeURIComponent(quote.nombre||'')},%20te%20compartimos%20tu%20cotizaci%C3%B3n%20solar...','_blank')">💬 WA</button>
-                <button class="btn-action" style="color:#ef4444; border-color:rgba(239,68,68,0.3);" onclick="deleteQuote(${pkId})">Del</button>
+            <td colspan="5">
+                <div style="padding: 10px 0;">
+                    <div style="display: grid; grid-template-columns: 1fr 2fr 1fr 2fr; gap: 15px; align-items: center;">
+                        <!-- Cliente -->
+                        <div>
+                            <div class="client-cell">
+                                <strong>${quote.nombre || ''}</strong>
+                                <small style="color:var(--gray-400);">${quote.empresa || 'Freelance'}</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Barra de progreso -->
+                        <div class="progress-container">
+                            <div class="progress-bar-wrapper">
+                                <div class="progress-bar-fill" style="width: ${progress}%; background: linear-gradient(90deg, ${progressData.color}, ${progressData.color}dd);">
+                                    <span class="progress-text">${progress}%</span>
+                                </div>
+                            </div>
+                            <div class="progress-label" style="color: ${progressData.color}; font-size: 0.85rem;">
+                                ${progressData.icon} ${progressData.label}
+                            </div>
+                        </div>
+                        
+                        <!-- Servicio y Fecha -->
+                        <div>
+                            <div style="font-size: 0.9rem; color: var(--gray-300);">
+                                📊 ${quote.servicio || '—'}<br>
+                                📅 ${dateStr}
+                            </div>
+                        </div>
+                        
+                        <!-- Acciones -->
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button class="btn-action-sm" title="Descargar PDF" onclick="generateQuotationPDF(${pkId})">📄</button>
+                            <button class="btn-action-sm" title="Enviar por Email" onclick="sendQuotationByEmail(${pkId})">✉️</button>
+                            <button class="btn-action-sm" title="Enviar por WhatsApp" onclick="sendQuotationByWhatsApp(${pkId})">💬</button>
+                            <button class="btn-action-sm danger" title="Eliminar" onclick="deleteQuote(${pkId})">🗑️</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Selector de progreso-->
+                    <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        <select class="progress-selector" onchange="updateQuotationProgress(${pkId}, this.value)" style="height: 32px; font-size: 0.8rem; flex: 0 1 auto;">
+                            <option value="10" ${progress === 10 ? 'selected' : ''}>10% - Enviada</option>
+                            <option value="20" ${progress === 20 ? 'selected' : ''}>20% - Espera</option>
+                            <option value="40" ${progress === 40 ? 'selected' : ''}>40% - Interesado</option>
+                            <option value="60" ${progress === 60 ? 'selected' : ''}>60% - Negociación</option>
+                            <option value="80" ${progress === 80 ? 'selected' : ''}>80% - Instalando</option>
+                            <option value="100" ${progress === 100 ? 'selected' : ''}>100% - Completada</option>
+                        </select>
+                        <input type="text" class="admin-input" placeholder="📝 Agregar nota..." 
+                            value="${quote.crmNote || ''}" 
+                            onchange="updateQuoteNote(${pkId}, this.value)"
+                            style="flex: 1; height: 32px; font-size: 0.8rem; padding: 6px; min-width: 200px;" />
+                    </div>
+                    
+                    <!-- Detalles (si aplica) -->
+                    ${quote.mensaje ? `<div style="margin-top: 8px; font-size: 0.85rem; color: var(--gray-400); border-left: 2px solid ${progressData.color}; padding-left: 10px;"><strong>Solicitud:</strong> ${quote.mensaje.substring(0, 100)}${quote.mensaje.length > 100 ? '...' : ''}</div>` : ''}
+                </div>
             </td>
         `;
+        
         quotesTbody.appendChild(tr2);
     });
+}
+
+// Actualizar nota de cotización
+function updateQuoteNote(quoteId, note) {
+    const quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
+    const quote = quotes.find(q => q.id === quoteId);
+    if (quote) {
+        quote.crmNote = note;
+        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+        showNotification('Nota actualizada', 'success');
+    }
 }
 
 // Renderizar controles de paginación
@@ -382,29 +452,11 @@ window.editClient = function(id) {
             factura: document.getElementById('editFactura').value,
             mensaje: document.getElementById('editMensaje').value
         };
-        
-        try {
-            // Actualizar en Supabase
-            if (typeof supabaseClient !== 'undefined') {
-                const { error } = await supabaseClient
-                    .from('contact_messages')
-                    .update(updatedData)
-                    .eq('id', id);
-                
-                if (error) throw error;
-            } else {
-                // Fallback a localStorage
-                const index = quotes.findIndex(q => q.id === id);
-                if (index !== -1) {
-                    quotes[index] = { ...quotes[index], ...updatedData };
-                    localStorage.setItem('solar_quotes', JSON.stringify(quotes));
-                }
-            }
-            
-            // Actualizar datos locales
+            // Actualizar en localStorage directamente
             const index = quotes.findIndex(q => q.id === id);
             if (index !== -1) {
                 quotes[index] = { ...quotes[index], ...updatedData };
+                localStorage.setItem('solar_quotes', JSON.stringify(quotes));
             }
             
             // Recargar vista
@@ -415,11 +467,6 @@ window.editClient = function(id) {
             
             // Mostrar éxito
             showNotification('Cliente actualizado correctamente', 'success');
-            
-        } catch (error) {
-            console.error('Error actualizando cliente:', error);
-            showNotification('Error al actualizar cliente', 'error');
-        }
     });
     
     // Cerrar modal al hacer clic fuera
@@ -435,30 +482,11 @@ window.deleteClient = function(id) {
     if (!client) return;
     
     if (confirm(`¿Estás seguro de que deseas eliminar a "${client.nombre}"?\n\nEsta acción no se puede deshacer.`)) {
-        // Eliminar de Supabase
-        if (typeof supabaseClient !== 'undefined') {
-            supabaseClient
-                .from('contact_messages')
-                .delete()
-                .eq('id', id)
-                .then(({ error }) => {
-                    if (error) {
-                        console.error('Error eliminando cliente:', error);
-                        showNotification('Error al eliminar cliente', 'error');
-                    } else {
-                        // Eliminar del array local
-                        quotes = quotes.filter(q => q.id !== id);
-                        renderFilteredData();
-                        showNotification('Cliente eliminado correctamente', 'success');
-                    }
-                });
-        } else {
-            // Fallback a localStorage
-            quotes = quotes.filter(q => q.id !== id);
-            localStorage.setItem('solar_quotes', JSON.stringify(quotes));
-            renderFilteredData();
-            showNotification('Cliente eliminado correctamente', 'success');
-        }
+        // Eliminar del localStorage garantizado
+        quotes = quotes.filter(q => q.id !== id);
+        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+        renderFilteredData();
+        showNotification('Cliente eliminado correctamente', 'success');
     }
 };
 
@@ -481,3 +509,34 @@ function showNotification(message, type = 'info') {
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
+
+// ====== Funciones para cotizaciones ======
+
+window.updateStatus = function(id, newStatus) {
+    const quote = quotes.find(q => q.id === id);
+    if (quote) {
+        quote.status = newStatus;
+        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+        renderFilteredData();
+    }
+};
+
+window.updateNote = function(id, noteText) {
+    const quote = quotes.find(q => q.id === id);
+    if (quote) {
+        quote.crmNote = noteText;
+        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+    }
+};
+
+window.deleteQuote = function(id) {
+    const quote = quotes.find(q => q.id === id);
+    if (!quote) return;
+    
+    if (confirm(`¿Eliminar cotización de "${quote.nombre}"?\n\nCliente: ${quote.email}`)) {
+        quotes = quotes.filter(q => q.id !== id);
+        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+        renderFilteredData();
+        showNotification('Cotización eliminada', 'success');
+    }
+};

@@ -125,29 +125,14 @@ async function populateRealData() {
         }
     ];
 
+    // NOTE: Data is now managed via localStorage (see js/seed-data.js)
+    // This function is kept for reference but no longer needed
     try {
-        // Limpiar datos existentes (opcional)
-        const { error: deleteError } = await supabaseClient
-            .from('contact_messages')
-            .delete()
-            .neq('id', 0);
-        
-        if (deleteError && deleteError.code !== 'PGRST116') {
-            console.warn('Error limpiando datos:', deleteError);
+        const existingData = JSON.parse(localStorage.getItem('solar_contactos')) || [];
+        if (existingData.length === 0) {
+            localStorage.setItem('solar_contactos', JSON.stringify(realData));
+            console.log(`✅ ${realData.length} registros inicializados en localStorage`);
         }
-
-        // Insertar datos reales
-        const { data, error } = await supabaseClient
-            .from('contact_messages')
-            .insert(realData)
-            .select();
-
-        if (error) {
-            console.error('Error insertando datos:', error);
-            return false;
-        }
-
-        console.log(`✅ ${data.length} registros insertados exitosamente`);
         return true;
     } catch (error) {
         console.error('Error en populateRealData:', error);

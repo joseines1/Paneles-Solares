@@ -1,71 +1,53 @@
 // js/supabase-config.js
-// Reemplazado: ya no usa Supabase. Auth y datos viven en localStorage.
+// Conexión real a BD Supabase
 
-// Credenciales de admin (solo locales, nunca se envían a ningún servidor)
-const ADMIN_EMAIL    = 'admin@solarweb.com';
-const ADMIN_PASSWORD = 'solar2024';
-const SESSION_KEY    = 'solar_admin_session';
+const supabaseUrl = 'https://ojswxnqgqikzmzihtmfu.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qc3d4bnFncWlrem16aWh0bWZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTU1NTksImV4cCI6MjA5MDA3MTU1OX0.K5LpkBcAN04yNfANiyBjiVSWZlQyGGtftVgVyt2MTEA';
 
-// Simula la API de Supabase que usaba el sitio
-const supabaseClient = {
-    auth: {
+let supabaseClient = null;
+
+if (window.supabase) {
+    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+    
+    // Sistema de auth sencillo (sin base de datos)
+    supabaseClient.auth = {
         signInWithPassword: async ({ email, password }) => {
+            const ADMIN_EMAIL    = 'joseines@gmail.es';
+            const ADMIN_PASSWORD = 'ines123';
+            
             if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
                 const session = {
                     user: { email },
                     expires_at: Date.now() + 8 * 60 * 60 * 1000 // 8 horas
                 };
-                localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+                localStorage.setItem('solar_admin_session', JSON.stringify(session));
                 return { data: { session }, error: null };
             }
-            return { data: null, error: { message: 'Invalid login credentials' } };
+            return { data: null, error: { message: 'Credenciales inválidas' } };
         },
         getSession: async () => {
-            const raw = localStorage.getItem(SESSION_KEY);
-            if (!raw) return { data: { session: null }, error: null };
-            const session = JSON.parse(raw);
-            if (Date.now() > session.expires_at) {
-                localStorage.removeItem(SESSION_KEY);
-                return { data: { session: null }, error: null };
-            }
-            return { data: { session }, error: null };
+            const raw = localStorage.getItem('solar_admin_session');
+            if (!raw) return { data: { session: null } };
+            try {
+                const session = JSON.parse(raw);
+                if (Date.now() > session.expires_at) {
+                    localStorage.removeItem('solar_admin_session');
+                    return { data: { session: null } };
+                }
+                return { data: { session } };
+            } catch(e) { return { data: { session: null } }; }
         },
         signOut: async () => {
-            localStorage.removeItem(SESSION_KEY);
+            localStorage.removeItem('solar_admin_session');
             return { error: null };
         }
-    },
-    from: (table) => ({
-        select: (cols) => ({
-            order: (col, opts) => Promise.resolve({ data: JSON.parse(localStorage.getItem('solar_quotes') || '[]'), error: null })
-        }),
-        insert: (rows) => {
-            const existing = JSON.parse(localStorage.getItem('solar_quotes') || '[]');
-            const newRows = rows.map(r => ({ ...r, id: Date.now() + Math.random(), created_at: new Date().toISOString() }));
-            localStorage.setItem('solar_quotes', JSON.stringify([...newRows, ...existing]));
-            return Promise.resolve({ data: newRows, error: null });
-        },
-        update: (changes) => ({
-            eq: (col, val) => {
-                const items = JSON.parse(localStorage.getItem('solar_quotes') || '[]');
-                const updated = items.map(i => i.id == val ? { ...i, ...changes } : i);
-                localStorage.setItem('solar_quotes', JSON.stringify(updated));
-                return Promise.resolve({ data: updated, error: null });
-            }
-        }),
-        delete: () => ({
-            eq: (col, val) => {
-                const items = JSON.parse(localStorage.getItem('solar_quotes') || '[]');
-                const filtered = items.filter(i => i.id != val);
-                localStorage.setItem('solar_quotes', JSON.stringify(filtered));
-                return Promise.resolve({ data: filtered, error: null });
-            }
-        })
-    })
-};
+    };
+} else {
+    console.error("Supabase CDN not loaded!");
+}
 
-// Función que usaba el sitio para verificar sesión
 async function checkSession() {
+    if (!supabaseClient) return null;
     const { data } = await supabaseClient.auth.getSession();
     return data.session;
 }

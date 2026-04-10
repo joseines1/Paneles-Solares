@@ -230,7 +230,7 @@
     <div class="container">
       <div class="section-header reveal">
         <span class="section-tag" style="background: var(--primary); color: white;">Ofertas Especiales</span>
-        <h2>Aprovecha nuestras <span>Promociones</span></h2>
+        <h2>Aprovecha Estas <span>Promociones</span> Que Tenemos Cada Mes 🎁</h2>
         <p>Da el paso hacia la energía solar con descuentos exclusivos por tiempo limitado.</p>
       </div>
 
@@ -411,6 +411,92 @@
     class="whatsapp-float" target="_blank" rel="noopener" aria-label="WhatsApp">💬</a>
 
   <script src="js/script.js"></script>
+  <script>
+    function loadHomePromosFromLocalStorage() {
+        const container = document.getElementById('homePromosGrid');
+        if (!container) return;
+        
+        const allPromos = JSON.parse(localStorage.getItem('solar_promotions') || '[]');
+        const kits = JSON.parse(localStorage.getItem('solar_kits') || '[]');
+        
+        // Tomar hasta las 3 promociones más recientes para el inicio
+        const promos = allPromos.slice(-3);
+        
+        if (promos.length === 0) {
+            container.innerHTML = '<p style="text-align:center; width:100%; color:var(--gray-400); padding: 3rem;">Revisa pronto para encontrar nuevas promociones exclusivas.</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        promos.forEach(promo => {
+            const card = document.createElement('div');
+            card.className = 'service-card reveal visible';
+            
+            let linkedKitsHtml = '';
+            let linkedImagesHtml = '';
+            
+            // Procesar productos/kits vinculados
+            let targetIds = promo.kitIds || (promo.kitId ? [String(promo.kitId)] : []);
+            if (targetIds.length > 0) {
+                const linkedKits = targetIds.map(id => kits.find(k => String(k.id) === String(id))).filter(k => k);
+                
+                if (linkedKits.length > 0) {
+                    // Generar galería de imágenes interactiva
+                    const imgs = linkedKits.map(kit => {
+                        let imgTh = kit.image ? kit.image : (kit.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
+                        return `<img src="${imgTh}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">`;
+                    });
+                    
+                    if (imgs.length === 1) {
+                        linkedImagesHtml = `<div style="height:200px; margin-bottom:1rem; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.05);">${imgs[0]}</div>`;
+                    } else {
+                        let items = imgs.map(i => `<div>${i}</div>`).join('');
+                        linkedImagesHtml = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:0.5rem; margin-bottom:1rem; height:160px; overflow:hidden;">${items}</div>`;
+                    }
+                    
+                    // Generar tags con nombres de kits
+                    let list = linkedKits.map(kit => `<span style="display:inline-block; background:rgba(59,130,246,0.15); color:var(--primary); border:1px solid rgba(59,130,246,0.3); padding:0.25rem 0.65rem; border-radius:20px; font-size:0.75rem; margin:0.2rem; font-weight:600;">📦 ${kit.name}</span>`).join('');
+                    linkedKitsHtml = `<div style="margin-bottom:1.5rem; text-align:center;">${list}</div>`;
+                }
+            }
+            
+            let featuresHTML = promo.features ? promo.features.split(',').map(f => `<li style="margin-bottom:0.5rem;">${f.trim()}</li>`).join('') : '';
+            // Recordar que quitamos la custom image nativa, solo usamos las referenciadas
+            let bgIcon = linkedImagesHtml ? '' : `<div class="service-icon" style="font-size:3rem; margin-bottom:1rem; text-align:center;">${promo.icon}</div>`;
+            
+            card.innerHTML = `
+                ${bgIcon}
+                ${linkedImagesHtml}
+                <div style="text-align:center; margin-bottom:0.8rem;">
+                    <span style="background:${promo.badgeColor}; color:white; padding:0.35rem 0.85rem; border-radius:20px; font-size:0.75rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;">${promo.badge}</span>
+                </div>
+                <h3 style="margin-bottom:0.5rem; text-align:center;">${promo.title}</h3>
+                ${linkedKitsHtml}
+                <p style="color:var(--gray-400); text-align:center; margin-bottom:1rem; font-size:0.95rem;">${promo.description}</p>
+                <div style="text-align:center; margin-bottom:1.5rem; background:rgba(0,0,0,0.2); padding:1rem; border-radius:8px;">
+                    ${promo.originalPrice ? `<span style="text-decoration:line-through; color:var(--gray-500); margin-right:0.5rem; font-size:0.9rem;">${promo.originalPrice}</span>` : ''}
+                    <span style="font-size:1.6rem; font-weight:800; color:var(--primary);">${promo.promoPrice}</span>
+                </div>
+                <ul style="color:var(--gray-300); font-size:0.9rem; padding:0; list-style:none; text-align:center; line-height:1.6; margin-bottom:1.5rem;">
+                    ${featuresHTML}
+                </ul>
+                <div style="text-align:center; margin-top:auto;">
+                    <a href="contacto.html?promo=${encodeURIComponent(promo.id)}" class="btn-primary" style="display:inline-block; text-decoration:none; width:100%;">Me interesa</a>
+                </div>
+            `;
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            
+            container.appendChild(card);
+        });
+    }
+    
+    document.addEventListener('DOMContentLoaded', loadHomePromosFromLocalStorage);
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'solar_promotions' || !e.key) loadHomePromosFromLocalStorage();
+    });
+  </script>
 </body>
 
 </html>

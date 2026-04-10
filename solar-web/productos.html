@@ -21,7 +21,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/estilos.css?v=1.0.0" />
-    <script src="js/supabase-config.js?v=2.0.0"></script>
+    <script src="js/auth-config.js?v=1.0.0"></script>
+    <script src="js/seed-data.js?v=1.0.0"></script>
     <style>
         .products-tabs {
             display: flex;
@@ -102,17 +103,22 @@
         }
 
         /* Responsive para productos */
+        #kitsContainer {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            width: 100%;
+        }
+
         @media (max-width: 1024px) {
-            .product-card {
-                flex: 0 0 calc(50% - 1rem) !important;
-                max-width: calc(50% - 1rem) !important;
+            #kitsContainer {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
         @media (max-width: 768px) {
-            .product-card {
-                flex: 0 0 100% !important;
-                max-width: 100% !important;
+            #kitsContainer {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -217,7 +223,6 @@
                 <span class="sep">›</span>
                 <span>Productos</span>
             </div>
-            <span class="section-tag">Catálogo 2025</span>
             <h1>Nuestros <span>Productos</span></h1>
             <p>Paneles, inversores y baterías de primera calidad. Tecnología de vanguardia con la mejor garantía del
                 mercado.</p>
@@ -227,15 +232,10 @@
     <!-- PRODUCTOS -->
     <section>
         <div class="container">
-
             <!-- Tabs filtro -->
-            <div class="products-tabs reveal">
-                <button class="tab-btn active" data-tab="todos" id="tabTodos">Kits Solares</button>
-            </div>
-
-            <div class="products-grid" id="productsGrid" style="display: flex; flex-wrap: wrap; gap: 2rem; justify-content: flex-start;">
+            <div id="productsGrid">
                 <!-- Kits Dinámicos de Supabase -->
-                <div id="kitsContainer" style="display: flex; flex-wrap: wrap; gap: 2rem; width: 100%;">
+                <div id="kitsContainer" class="kits-grid">
                     <!-- Los kits se cargarán aquí dinámicamente -->
                 </div>
             </div><!-- /products-grid -->
@@ -349,10 +349,9 @@
             const card = document.createElement('div');
             card.className = 'product-card reveal visible';
             card.setAttribute('data-category', 'kit');
-            card.style.cssText = 'flex: 0 0 calc(33.333% - 1.33rem); max-width: calc(33.333% - 1.33rem); display: flex; flex-direction: column; background: var(--secondary-mid); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden;';
+            card.style.cssText = 'display: flex; flex-direction: column; background: var(--secondary-mid); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; height: 100%;';
             
-            let kitImage = 'img/panel_residencial.png';
-            if (kit.capacity > 5) kitImage = 'img/panel_comercial.png';
+            let kitImage = kit.image || (kit.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
             
             const featuresList = kit.features ? kit.features.split(',').map(f => `<li>${f.trim()}</li>`).join('') : '';
             

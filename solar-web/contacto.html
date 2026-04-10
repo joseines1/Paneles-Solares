@@ -569,6 +569,65 @@
             resultEl.style.display = 'block';
             resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
+
+        // Interceptar formulario para guardar en Admin (localStorage) y enviar por correo al mismo tiempo
+        const contactForm = document.getElementById('contactForm');
+        if (contactForm) {
+            contactForm.addEventListener('submit', function(e) {
+                e.preventDefault(); // Evitamos recargar/salir de la página
+
+                // 1. Extraer los datos ingresados
+                const nombre = document.getElementById('nombre').value;
+                const empresa = document.getElementById('empresa').value;
+                const email = document.getElementById('email').value;
+                const telefono = document.getElementById('telefono').value;
+                const servicio = document.getElementById('servicio').value;
+                const factura = document.getElementById('factura').value;
+                const mensaje = document.getElementById('mensaje').value;
+
+                // 2. Guardar a nivel local para el Dashboard del Admin (solar_quotes)
+                const quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
+                const newId = quotes.length > 0 ? Math.max(...quotes.map(q => q.id || 0)) + 1 : 1;
+                
+                quotes.unshift({ // unshift para agregarlo al principio (el más reciente)
+                    id: newId,
+                    created_at: new Date().toISOString(),
+                    nombre: nombre,
+                    empresa: empresa,
+                    email: email,
+                    telefono: telefono,
+                    servicio: servicio,
+                    factura: factura,
+                    mensaje: mensaje,
+                    status: 'Nuevo'
+                });
+                localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+
+                // 3. Enviar correo silenciosamente
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.innerHTML = 'Enviando Solicitud... ⏳';
+                submitBtn.disabled = true;
+
+                const formData = new FormData(contactForm);
+                fetch(contactForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(response => {
+                    // Limpiamos y mostramos mensaje de éxito
+                    contactForm.reset();
+                    contactForm.style.display = 'none';
+                    document.getElementById('formSuccess').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error enviando correo:', error);
+                    alert("No se pudo enviar el correo por problemas de red, pero la solicitud quedó registrada en tu panel de administrador de forma local.");
+                    submitBtn.innerHTML = '<span>☀️</span> Reintentar';
+                    submitBtn.disabled = false;
+                });
+            });
+        }
     </script>
 </body>
 

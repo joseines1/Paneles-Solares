@@ -41,6 +41,45 @@ if (!kits || kits.length === 0) {
 }
 
 let editingKitId = null;
+let currentKitImageBase64 = null;
+
+function setupImageListeners() {
+    const fileInput = document.getElementById('kitImageFile');
+    const urlInput = document.getElementById('kitImageURL');
+    const preview = document.getElementById('kitImagePreview');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    currentKitImageBase64 = evt.target.result;
+                    if (preview) {
+                        preview.src = currentKitImageBase64;
+                        preview.style.display = 'block';
+                    }
+                };
+                reader.readAsDataURL(file);
+                if (urlInput) urlInput.value = ''; // Borra URL si selecciona archivo
+            }
+        });
+    }
+
+    if (urlInput) {
+        urlInput.addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                currentKitImageBase64 = null; 
+                if (preview) {
+                    preview.src = this.value;
+                    preview.style.display = 'block';
+                }
+            } else if (!currentKitImageBase64) {
+                if (preview) preview.style.display = 'none';
+            }
+        });
+    }
+}
 
 function loadKits() {
     kits = JSON.parse(localStorage.getItem('solar_kits')) || [];
@@ -66,14 +105,21 @@ function renderKits() {
         if (kit.status === 'Agotado') statusBadge = 'bg-red-500';
         if (kit.status === 'Oculto') statusBadge = 'bg-gray-600';
 
+        let imgThumb = kit.image ? kit.image : (kit.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
+        
         tr.innerHTML = `
-            <td><strong>${kit.name}</strong></td>
+            <td>
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <img src="${imgThumb}" alt="thumb" style="width:40px; height:40px; border-radius:6px; object-fit:cover; border:1px solid rgba(255,255,255,0.1);" />
+                    <strong>${kit.name}</strong>
+                </div>
+            </td>
             <td>${kit.capacity} kW</td>
             <td>$${Number(kit.price).toLocaleString('es-MX')}</td>
             <td>${kit.stock}</td>
             <td><span class="status-badge" style="background:var(--primary); color:white; font-size:0.8rem; padding:0.2rem 0.5rem;">${kit.status}</span></td>
             <td>
-                <button class="btn-action" style="color:#3b82f6; border-color:rgba(59,130,246,0.3);" onclick="editKit(${kit.id})">Editar</button>
+                <button class="btn-action" style="color:#3b82f6; border-color:rgba(59,130,246,0.3);" onclick="showKitModal(${kit.id})">Editar</button>
                 <button class="btn-action" style="color:#ef4444; border-color:rgba(239,68,68,0.3);" onclick="deleteKit(${kit.id})">Eliminar</button>
             </td>
         `;
@@ -100,10 +146,40 @@ function showKitModal(id = null) {
             document.getElementById('kitStatus').value = kit.status;
             document.getElementById('kitDesc').value = kit.description;
             document.getElementById('kitFeatures').value = kit.features;
+            
+            if (document.getElementById('kitImageURL')) {
+                if (kit.image) {
+                    if (kit.image.startsWith('data:image')) {
+                        currentKitImageBase64 = kit.image;
+                        document.getElementById('kitImageURL').value = '';
+                    } else {
+                        currentKitImageBase64 = null;
+                        document.getElementById('kitImageURL').value = kit.image;
+                    }
+                    if (document.getElementById('kitImagePreview')) {
+                        document.getElementById('kitImagePreview').src = kit.image;
+                        document.getElementById('kitImagePreview').style.display = 'block';
+                    }
+                } else {
+                    currentKitImageBase64 = null;
+                    document.getElementById('kitImageURL').value = '';
+                    if (document.getElementById('kitImagePreview')) {
+                        document.getElementById('kitImagePreview').style.display = 'none';
+                        document.getElementById('kitImagePreview').src = '';
+                    }
+                }
+            }
         }
     } else {
         editingKitId = null;
         document.getElementById('kitModalTitle').textContent = 'Crear Producto';
+        currentKitImageBase64 = null;
+        if (document.getElementById('kitImageURL')) document.getElementById('kitImageURL').value = '';
+        if (document.getElementById('kitImageFile')) document.getElementById('kitImageFile').value = '';
+        if (document.getElementById('kitImagePreview')) {
+            document.getElementById('kitImagePreview').style.display = 'none';
+            document.getElementById('kitImagePreview').src = '';
+        }
     }
 
     modal.classList.add('active');
@@ -124,20 +200,24 @@ function saveKit(event) {
     const status = document.getElementById('kitStatus').value;
     const description = document.getElementById('kitDesc').value.trim();
     const features = document.getElementById('kitFeatures').value.trim();
+    
+    // Obtener la imagen
+    const urlValue = document.getElementById('kitImageURL') ? document.getElementById('kitImageURL').value.trim() : '';
+    const image = currentKitImageBase64 ? currentKitImageBase64 : urlValue;
 
     if (editingKitId) {
         const index = kits.findIndex(k => k.id === editingKitId);
         if (index !== -1) {
             kits[index] = {
                 id: editingKitId,
-                name, capacity, price, stock, status, description, features
+                name, capacity, price, stock, status, description, features, image
             };
         }
     } else {
         const newId = kits.length > 0 ? Math.max(...kits.map(k => k.id)) + 1 : 1;
         kits.push({
             id: newId,
-            name, capacity, price, stock, status, description, features
+            name, capacity, price, stock, status, description, features, image
         });
     }
 
@@ -177,6 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (kitForm) {
         kitForm.addEventListener('submit', saveKit);
     }
+    
+    setupImageListeners();
     
     // Si estamos en la página del admin, sobreescribimos la función de mostrar el modal de promo
     // para cargar los productos en el select si existe.

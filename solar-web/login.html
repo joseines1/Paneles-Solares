@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/estilos.css?v=1.0.0" />
-    <script src="js/supabase-config.js?v=2.0.0"></script>
+    <script src="js/auth-config.js?v=1.0.0"></script>
     
     <style>
         body.login-body {
@@ -35,14 +35,13 @@
             width: 100%;
             max-width: 420px;
             padding: 2.5rem;
-            background: rgba(30, 41, 59, 0.65);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
+            background: #1e293b; /* Color sólido para asegurar visibilidad */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             text-align: center;
-            animation: fadeInUp 0.5s ease;
+            position: relative;
+            z-index: 10;
         }
 
         .login-logo {
@@ -184,7 +183,7 @@
             <a href="index.html" class="btn-back" style="display: block; margin-top: 1rem; text-align: center; color: var(--gray-400); font-size: 0.9rem; text-decoration: none; padding: 0.5rem;">← Regresar al inicio</a>
         </form>
         <div class="demo-credentials">
-            🔐 Acceso: <code>admin@solarweb.com</code> / <code>solar2024</code>
+            🔐 Acceso: <code>joseines@gmail.es</code> / <code>ines123</code>
         </div>
     </div>
 
@@ -198,7 +197,7 @@
                 if (session) window.location.replace('admin.html');
             }).catch(() => {});
         } else {
-            supabaseClient.auth.signOut();
+            authClient.signOut();
         }
 
         const loginForm = document.getElementById('loginForm');
@@ -215,12 +214,17 @@
             submitBtn.disabled = true;
             loginError.style.display = 'none';
 
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
+            try {
+                const { data, error } = await authClient.signInWithPassword({ email, password: pass });
 
-            if (!error && data && data.session) {
-                window.location.replace('admin.html');
-            } else {
-                loginError.textContent = 'Usuario o contraseña incorrectos.';
+                if (!error && data && data.session) {
+                    window.location.replace('admin.html');
+                } else {
+                    throw error || new Error('Credenciales inválidas');
+                }
+            } catch (err) {
+                console.error("Login error:", err);
+                loginError.textContent = err.message || 'Usuario o contraseña incorrectos.';
                 loginError.style.display = 'block';
 
                 const container = document.querySelector('.login-container');

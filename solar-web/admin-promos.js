@@ -43,7 +43,27 @@ if (!promos || promos.length === 0) {
     localStorage.setItem('solar_promotions', JSON.stringify(promos));
 }
 
-let editingPromoId = null;
+window.updatePromoLinkedImagesPreview = function() {
+    const previewDiv = document.getElementById('promoLinkedImagesPreview');
+    if (!previewDiv) return;
+    const select = document.getElementById('promoProductSelect');
+    if (!select) return;
+    
+    const kitIds = Array.from(select.selectedOptions).map(opt => opt.value).filter(v => v);
+    const localKits = JSON.parse(localStorage.getItem('solar_kits')) || [];
+    
+    let html = '';
+    kitIds.forEach(id => {
+        const kit = localKits.find(k => String(k.id) === String(id));
+        if (kit) {
+            let img = kit.image ? kit.image : (kit.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
+            html += `<div style="position:relative; width:70px; height:70px; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.2);" title="${kit.name}">
+                <img src="${img}" style="width:100%;height:100%;object-fit:cover;">
+            </div>`;
+        }
+    });
+    previewDiv.innerHTML = html;
+};
 
 function loadPromos() {
     promos = JSON.parse(localStorage.getItem('solar_promotions')) || [];
@@ -60,13 +80,30 @@ function renderPromos() {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray-400);">No hay promociones registradas.</td></tr>';
         return;
     }
+    
+    const localKits = JSON.parse(localStorage.getItem('solar_kits')) || [];
 
     promos.forEach(promo => {
         const tr = document.createElement('tr');
+        
+        // Determinar thumbnail automático o manual
+        let imgThumb = promo.image;
+        if (!imgThumb) {
+            let targetIds = promo.kitIds || (promo.kitId ? [String(promo.kitId)] : []);
+            if (targetIds.length > 0) {
+                const firstLinked = localKits.find(k => String(k.id) === String(targetIds[0]));
+                if (firstLinked) {
+                    imgThumb = firstLinked.image ? firstLinked.image : (firstLinked.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
+                }
+            }
+        }
+        
+        let visualIcon = imgThumb ? `<img src="${imgThumb}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);">` : `<span style="font-size:1.5rem;">${promo.icon}</span>`;
+        
         tr.innerHTML = `
             <td>
                 <div style="display:flex; align-items:center; gap:0.5rem;">
-                    <span style="font-size:1.5rem;">${promo.icon}</span>
+                    ${visualIcon}
                     <strong>${promo.title}</strong>
                 </div>
             </td>
@@ -74,7 +111,7 @@ function renderPromos() {
             <td style="color:var(--primary); font-weight:bold;">${promo.promoPrice}</td>
             <td><span class="status-badge" style="background:${promo.badgeColor}; color:white;">${promo.badge}</span></td>
             <td>
-                <button class="btn-action" style="color:#3b82f6; border-color:rgba(59,130,246,0.3);" onclick="editPromo(${promo.id})">Editar</button>
+                <button class="btn-action" style="color:#3b82f6; border-color:rgba(59,130,246,0.3);" onclick="showPromoModal(${promo.id})">Editar</button>
                 <button class="btn-action" style="color:#ef4444; border-color:rgba(239,68,68,0.3);" onclick="deletePromo(${promo.id})">Eliminar</button>
             </td>
         `;
@@ -108,15 +145,26 @@ function showPromoModal(id = null) {
             document.getElementById('promoIcon').value = promo.icon;
             document.getElementById('promoFeatures').value = promo.features;
             
-            // Setear el producto vinculado si existe
-            if (document.getElementById('promoProductSelect') && promo.kitId) {
-                document.getElementById('promoProductSelect').value = promo.kitId;
+            // Setear productos múltiples vinculados
+            if (document.getElementById('promoProductSelect')) {
+                const select = document.getElementById('promoProductSelect');
+                let linkedIds = promo.kitIds || (promo.kitId ? [String(promo.kitId)] : []);
+                Array.from(select.options).forEach(opt => {
+                    opt.selected = linkedIds.includes(opt.value);
+                });
+                if (typeof window.updatePromoLinkedImagesPreview === 'function') {
+                    window.updatePromoLinkedImagesPreview();
+                }
             }
         }
     } else {
         editingPromoId = null;
         document.getElementById('promoModalTitle').textContent = 'Crear Promoción';
         document.getElementById('promoBadgeColor').value = '#ef4444'; // Default color
+        
+        if(document.getElementById('promoLinkedImagesPreview')) {
+            document.getElementById('promoLinkedImagesPreview').innerHTML = '';
+        }
     }
 
     modal.classList.add('active');
@@ -139,25 +187,28 @@ function savePromo(event) {
     const icon = document.getElementById('promoIcon').value.trim();
     const features = document.getElementById('promoFeatures').value.trim();
     
-    // Guardar el id del kit vinculado
-    let kitId = null;
+    // Guardar array de selección múltiple
+    let kitIds = [];
     if (document.getElementById('promoProductSelect')) {
-        kitId = document.getElementById('promoProductSelect').value;
+        const select = document.getElementById('promoProductSelect');
+        kitIds = Array.from(select.selectedOptions).map(opt => opt.value).filter(val => val !== '');
     }
 
     if (editingPromoId) {
         const index = promos.findIndex(p => p.id === editingPromoId);
         if (index !== -1) {
             promos[index] = {
+                ...promos[index], // Conserva propiedades antiguas
                 id: editingPromoId,
-                title, description, originalPrice, promoPrice, badge, badgeColor, icon, features, kitId
+                title, description, originalPrice, promoPrice, badge, badgeColor, icon, features, kitIds
             };
+            delete promos[index].image; // Quitamos imagen si existía para forzar dinámicas
         }
     } else {
         const newId = promos.length > 0 ? Math.max(...promos.map(p => p.id)) + 1 : 1;
         promos.push({
             id: newId,
-            title, description, originalPrice, promoPrice, badge, badgeColor, icon, features, kitId
+            title, description, originalPrice, promoPrice, badge, badgeColor, icon, features, kitIds
         });
     }
 
