@@ -1,0 +1,21 @@
+{
+  "name": "paneles-solares-backend",
+  "version": "1.0.0",
+  "description": "Backend para Paneles Solares - Gestión de cotizaciones",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "@sendgrid/mail": "^7.7.0",
+    "twilio": "^3.85.1"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}

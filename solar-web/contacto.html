@@ -317,12 +317,8 @@
                     <h3>Solicitar Cotización Gratis</h3>
                     <p>Completa el formulario y te contactamos en menos de 24 horas hábiles.</p>
 
-                    <form id="contactForm" action="https://formsubmit.co/joseolivo78376@gmail.com" method="POST">
-                        <!-- Configuraciones de FormSubmit -->
-                        <input type="hidden" name="_subject" value="Nueva solicitud de cotización - SolarWeb">
-                        <input type="hidden" name="_template" value="table">
-                        <input type="hidden" name="_captcha" value="false">
-                        
+                    <form id="contactForm">
+                        <!-- El formulario enviará a /api/contact vía JavaScript -->
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="nombre">Nombre completo *</label>
@@ -570,59 +566,68 @@
             resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
 
-        // Interceptar formulario para guardar en Admin (localStorage) y enviar por correo al mismo tiempo
+        // Interceptar formulario para enviar al backend
         const contactForm = document.getElementById('contactForm');
         if (contactForm) {
             contactForm.addEventListener('submit', function(e) {
-                e.preventDefault(); // Evitamos recargar/salir de la página
+                e.preventDefault();
 
-                // 1. Extraer los datos ingresados
-                const nombre = document.getElementById('nombre').value;
-                const empresa = document.getElementById('empresa').value;
-                const email = document.getElementById('email').value;
-                const telefono = document.getElementById('telefono').value;
-                const servicio = document.getElementById('servicio').value;
-                const factura = document.getElementById('factura').value;
-                const mensaje = document.getElementById('mensaje').value;
-
-                // 2. Guardar a nivel local para el Dashboard del Admin (solar_quotes)
-                const quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
-                const newId = quotes.length > 0 ? Math.max(...quotes.map(q => q.id || 0)) + 1 : 1;
-                
-                quotes.unshift({ // unshift para agregarlo al principio (el más reciente)
-                    id: newId,
-                    created_at: new Date().toISOString(),
-                    nombre: nombre,
-                    empresa: empresa,
-                    email: email,
-                    telefono: telefono,
-                    servicio: servicio,
-                    factura: factura,
-                    mensaje: mensaje,
-                    status: 'Nuevo'
-                });
-                localStorage.setItem('solar_quotes', JSON.stringify(quotes));
-
-                // 3. Enviar correo silenciosamente
                 const submitBtn = document.getElementById('submitBtn');
                 submitBtn.innerHTML = 'Enviando Solicitud... ⏳';
                 submitBtn.disabled = true;
 
-                const formData = new FormData(contactForm);
-                fetch(contactForm.action, {
+                // Recopilar datos del formulario
+                const formData = {
+                    nombre: document.getElementById('nombre').value,
+                    empresa: document.getElementById('empresa').value,
+                    email: document.getElementById('email').value,
+                    telefono: document.getElementById('telefono').value,
+                    servicio: document.getElementById('servicio').value,
+                    factura: document.getElementById('factura').value,
+                    mensaje: document.getElementById('mensaje').value
+                };
+
+                // Enviar al backend
+                const apiUrl = window.location.origin + '/api/contact';
+                fetch(apiUrl, {
                     method: 'POST',
-                    body: formData,
-                    headers: { 'Accept': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
                 })
                 .then(response => {
-                    // Limpiamos y mostramos mensaje de éxito
-                    contactForm.reset();
-                    contactForm.style.display = 'none';
-                    document.getElementById('formSuccess').style.display = 'block';
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Guardar en localStorage también (para panel admin)
+                        const quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
+                        quotes.unshift({
+                            id: data.contactId || Date.now(),
+                            created_at: new Date().toISOString(),
+                            ...formData,
+                            status: 'Nueva solicitud',
+                            progress: 10
+                        });
+                        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+
+                        // Mostrar éxito
+                        contactForm.reset();
+                        contactForm.style.display = 'none';
+                        document.getElementById('formSuccess').style.display = 'block';
+                        console.log('✅ Solicitud enviada exitosamente');
+                    } else {
+                        throw new Error(data.error || 'Error desconocido');
+                    }
                 })
                 .catch(error => {
-                    console.error('Error enviando correo:', error);
-                    alert("No se pudo enviar el correo por problemas de red, pero la solicitud quedó registrada en tu panel de administrador de forma local.");
+                    console.error('Error:', error);
+                    alert(`Error al enviar la solicitud: ${error.message}\n\nPor favor intenta de nuevo.`);
                     submitBtn.innerHTML = '<span>☀️</span> Reintentar';
                     submitBtn.disabled = false;
                 });
