@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import sgMail from '@sendgrid/mail';
 import twilio from 'twilio';
+import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -23,8 +24,14 @@ app.use(express.static(path.join(__dirname, 'solar-web')));
 // Configurar SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// Configurar Twilio
+// Configurar Twilios
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
+// Configurar Supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 // Ruta para servir archivos estáticos (fallback a index.html para SPA)
 app.get('/', (req, res) => {
@@ -160,22 +167,8 @@ app.post('/api/contact', async (req, res) => {
       }
     }
 
-    // ✅ 4. Guardar en archivo JSON (para persistencia sin BD)
-    const contactsFile = path.join(__dirname, 'data', 'contacts.json');
-    const dataDir = path.join(__dirname, 'data');
-
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    let contacts = [];
-    if (fs.existsSync(contactsFile)) {
-      contacts = JSON.parse(fs.readFileSync(contactsFile, 'utf-8'));
-    }
-
+    // ✅ 4. Guardar en Supabase (base de datos persistente)
     const newContact = {
-      id: Date.now(),
-      created_at: new Date().toISOString(),
       nombre,
       empresa,
       email,
@@ -184,12 +177,25 @@ app.post('/api/contact', async (req, res) => {
       factura,
       mensaje,
       status: 'Nueva solicitud',
-      progress: 10
+      progress: 10,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
-    contacts.unshift(newContact);
-    fs.writeFileSync(contactsFile, JSON.stringify(contacts, null, 2));
-    console.log(`✅ Contacto guardado en archivo: ${contactsFile}`);
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .insert([newContact])
+        .select();
+
+      if (error) {
+        console.error('⚠️ Error guardando en Supabase:', error);
+      } else {
+        console.log(`✅ Contacto guardado en Supabase:`, data);
+      }
+    } catch (supabaseError) {
+      console.error('⚠️ Error con Supabase:', supabaseError.message);
+    }
 
     // ✅ Respuesta exitosa
     res.json({
@@ -207,17 +213,20 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-// API: Obtener lista de contactos (protegida por token simple)
-app.get('/api/contacts', (req, res) => {
+// API: Obtener lista de contactos desde Supabase
+app.get('/api/contacts', async (req, res) => {
   try {
-    const contactsFile = path.join(__dirname, 'data', 'contacts.json');
-    
-    if (!fs.existsSync(contactsFile)) {
-      return res.json([]);
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error leyendo contacts:', error);
+      return res.status(500).json({ error: error.message });
     }
 
-    const contacts = JSON.parse(fs.readFileSync(contactsFile, 'utf-8'));
-    res.json(contacts);
+    res.json(data || []);
   } catch (error) {
     console.error('Error reading contacts:', error);
     res.status(500).json({ error: error.message });
@@ -239,11 +248,14 @@ app.listen(PORT, () => {
   console.log(`\n🚀 Servidor Paneles Solares corriendo en puerto ${PORT}`);
   console.log(`📧 SendGrid: ${process.env.SENDGRID_API_KEY ? '✅ Configurado' : '⚠️ No configurado'}`);
   console.log(`💬 Twilio: ${process.env.TWILIO_ACCOUNT_SID ? '✅ Configurado' : '⚠️ No configurado'}`);
+  console.log(`🗄️  Supabase: ${process.env.SUPABASE_URL ? '✅ Configurado' : '⚠️ No configurado'}`);
   console.log(`\n📝 Variables de entorno necesarias:`);
   console.log(`   - SENDGRID_API_KEY`);
   console.log(`   - SENDGRID_FROM_EMAIL`);
   console.log(`   - TWILIO_ACCOUNT_SID`);
   console.log(`   - TWILIO_AUTH_TOKEN`);
   console.log(`   - TWILIO_PHONE (número de Twilio para WhatsApp)`);
+  console.log(`   - SUPABASE_URL`);
+  console.log(`   - SUPABASE_ANON_KEY`);
   console.log(`   - ADMIN_EMAIL\n`);
 });
