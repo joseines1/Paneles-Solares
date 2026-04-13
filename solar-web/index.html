@@ -25,7 +25,10 @@
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="css/estilos.css?v=1.0.0" />
-    <link rel="stylesheet" href="css/admin-access.css?v=1.0.0" />
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js?v=1.0.0"></script>
+  <link rel="stylesheet" href="css/admin-access.css?v=1.0.0" />
 </head>
 
 <body>
@@ -406,96 +409,124 @@
     </div>
   </footer>
 
-  <!-- WhatsApp flotante -->
+  <!-- WhatsApp flotante con SVG -->
   <a href="https://wa.me/528783724562?text=Hola!%20Me%20interesa%20una%20cotización%20de%20paneles%20solares"
-    class="whatsapp-float" target="_blank" rel="noopener" aria-label="WhatsApp">💬</a>
+    class="whatsapp-float" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.198.297-.768.967-.94 1.165-.173.198-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004a9.87 9.87 0 00-4.959 1.214l-.36.214-3.714-.973.992 3.285-.213.34a9.758 9.758 0 00-1.399 4.93c0 5.409 4.409 9.818 9.818 9.818 2.39 0 4.618-.862 6.337-2.286 1.718-1.425 2.747-3.432 2.787-5.577 0-5.324-4.336-9.655-9.651-9.655" fill="currentColor"/>
+    </svg>
+  </a>
 
   <script src="js/script.js"></script>
   <script>
-    function loadHomePromosFromLocalStorage() {
-        const container = document.getElementById('homePromosGrid');
-        if (!container) return;
-        
-        const allPromos = JSON.parse(localStorage.getItem('solar_promotions') || '[]');
-        const kits = JSON.parse(localStorage.getItem('solar_kits') || '[]');
-        
-        // Tomar hasta las 3 promociones más recientes para el inicio
-        const promos = allPromos.slice(-3);
-        
-        if (promos.length === 0) {
-            container.innerHTML = '<p style="text-align:center; width:100%; color:var(--gray-400); padding: 3rem;">Revisa pronto para encontrar nuevas promociones exclusivas.</p>';
-            return;
-        }
-        
-        container.innerHTML = '';
-        
-        promos.forEach(promo => {
-            const card = document.createElement('div');
-            card.className = 'service-card reveal visible';
-            
-            let linkedKitsHtml = '';
-            let linkedImagesHtml = '';
-            
-            // Procesar productos/kits vinculados
-            let targetIds = promo.kitIds || (promo.kitId ? [String(promo.kitId)] : []);
-            if (targetIds.length > 0) {
-                const linkedKits = targetIds.map(id => kits.find(k => String(k.id) === String(id))).filter(k => k);
-                
-                if (linkedKits.length > 0) {
-                    // Generar galería de imágenes interactiva
-                    const imgs = linkedKits.map(kit => {
-                        let imgTh = kit.image ? kit.image : (kit.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
-                        return `<img src="${imgTh}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">`;
-                    });
-                    
-                    if (imgs.length === 1) {
-                        linkedImagesHtml = `<div style="height:200px; margin-bottom:1rem; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.05);">${imgs[0]}</div>`;
-                    } else {
-                        let items = imgs.map(i => `<div>${i}</div>`).join('');
-                        linkedImagesHtml = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:0.5rem; margin-bottom:1rem; height:160px; overflow:hidden;">${items}</div>`;
-                    }
-                    
-                    // Generar tags con nombres de kits
-                    let list = linkedKits.map(kit => `<span style="display:inline-block; background:rgba(59,130,246,0.15); color:var(--primary); border:1px solid rgba(59,130,246,0.3); padding:0.25rem 0.65rem; border-radius:20px; font-size:0.75rem; margin:0.2rem; font-weight:600;">📦 ${kit.name}</span>`).join('');
-                    linkedKitsHtml = `<div style="margin-bottom:1.5rem; text-align:center;">${list}</div>`;
-                }
+        async function loadHomePromosFromSupabase() {
+            const container = document.getElementById('homePromosGrid');
+            if (!container) return;
+
+            let client = window.supabaseClient;
+            let retries = 0;
+
+            // Reintentar si Supabase no está listo
+            while (!client && retries < 10) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                client = window.supabaseClient;
+                retries++;
             }
-            
-            let featuresHTML = promo.features ? promo.features.split(',').map(f => `<li style="margin-bottom:0.5rem;">${f.trim()}</li>`).join('') : '';
-            // Recordar que quitamos la custom image nativa, solo usamos las referenciadas
-            let bgIcon = linkedImagesHtml ? '' : `<div class="service-icon" style="font-size:3rem; margin-bottom:1rem; text-align:center;">${promo.icon}</div>`;
-            
-            card.innerHTML = `
-                ${bgIcon}
-                ${linkedImagesHtml}
-                <div style="text-align:center; margin-bottom:0.8rem;">
-                    <span style="background:${promo.badgeColor}; color:white; padding:0.35rem 0.85rem; border-radius:20px; font-size:0.75rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;">${promo.badge}</span>
-                </div>
-                <h3 style="margin-bottom:0.5rem; text-align:center;">${promo.title}</h3>
-                ${linkedKitsHtml}
-                <p style="color:var(--gray-400); text-align:center; margin-bottom:1rem; font-size:0.95rem;">${promo.description}</p>
-                <div style="text-align:center; margin-bottom:1.5rem; background:rgba(0,0,0,0.2); padding:1rem; border-radius:8px;">
-                    ${promo.originalPrice ? `<span style="text-decoration:line-through; color:var(--gray-500); margin-right:0.5rem; font-size:0.9rem;">${promo.originalPrice}</span>` : ''}
-                    <span style="font-size:1.6rem; font-weight:800; color:var(--primary);">${promo.promoPrice}</span>
-                </div>
-                <ul style="color:var(--gray-300); font-size:0.9rem; padding:0; list-style:none; text-align:center; line-height:1.6; margin-bottom:1.5rem;">
-                    ${featuresHTML}
-                </ul>
-                <div style="text-align:center; margin-top:auto;">
-                    <a href="contacto.html?promo=${encodeURIComponent(promo.id)}" class="btn-primary" style="display:inline-block; text-decoration:none; width:100%;">Me interesa</a>
-                </div>
-            `;
-            card.style.display = 'flex';
-            card.style.flexDirection = 'column';
-            
-            container.appendChild(card);
-        });
-    }
-    
-    document.addEventListener('DOMContentLoaded', loadHomePromosFromLocalStorage);
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'solar_promotions' || !e.key) loadHomePromosFromLocalStorage();
-    });
+
+            if (!client) {
+                console.warn('⚠️ Supabase Client no disponible');
+                container.innerHTML = '<p style="text-align:center; width:100%; color:var(--gray-400); padding: 3rem;">Cargando promociones...</p>';
+                return;
+            }
+
+            try {
+                // Cargar promos y kits en paralelo
+                const [promosRes, kitsRes] = await Promise.all([
+                    client.from('promotions').select('*').order('created_at', { ascending: false }).limit(3),
+                    client.from('kits').select('*')
+                ]);
+
+                if (promosRes.error) throw promosRes.error;
+                const promos = promosRes.data || [];
+                const kits = kitsRes.data || [];
+
+                console.log(`✅ Promociones cargadas: ${promos.length}, Kits: ${kits.length}`);
+
+                if (promos.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; width:100%; color:var(--gray-400); padding: 3rem;">Explora nuestras soluciones solares.</p>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                promos.forEach(promo => {
+                    const card = document.createElement('div');
+                    card.className = 'service-card reveal visible';
+
+                    let linkedKitsHtml = '';
+                    let linkedImagesHtml = '';
+
+                    let targetIds = promo.kit_ids || [];
+                    if (targetIds.length > 0) {
+                        const linkedKits = targetIds.map(id => kits.find(k => String(k.id) === String(id))).filter(k => k);
+                        if (linkedKits.length > 0) {
+                            if (!promo.image) {
+                                const imgs = linkedKits.map(kit => {
+                                    let imgTh = kit.image || (kit.capacity > 5 || kit.potencia > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
+                                    return `<img src="${imgTh}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">`;
+                                });
+
+                                if (imgs.length === 1) {
+                                    linkedImagesHtml = `<div style="height:200px; margin-bottom:1rem; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.05);">${imgs[0]}</div>`;
+                                } else {
+                                    let items = imgs.map(i => `<div>${i}</div>`).join('');
+                                    linkedImagesHtml = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:0.5rem; margin-bottom:1rem; height:160px; overflow:hidden;">${items}</div>`;
+                                }
+                            }
+                            let list = linkedKits.map(kit => `<span style="display:inline-block; background:rgba(59,130,246,0.15); color:var(--primary); border:1px solid rgba(59,130,246,0.3); padding:0.25rem 0.65rem; border-radius:20px; font-size:0.75rem; margin:0.2rem; font-weight:600;">📦 ${kit.name}</span>`).join('');
+                            linkedKitsHtml = `<div style="margin-bottom:1.5rem; text-align:center;">${list}</div>`;
+                        }
+                    }
+
+                    let featuresHTML = promo.features ? promo.features.split(',').map(f => `<li style="margin-bottom:0.5rem;">${f.trim()}</li>`).join('') : '';
+                    let imageHTML = promo.image ? `<img src="${promo.image}" style="width:100%; height:200px; object-fit:cover; border-radius:12px; margin-bottom:1rem; border:1px solid rgba(255,255,255,0.05);">` : linkedImagesHtml;
+                    let bgIcon = (promo.image || linkedImagesHtml) ? '' : `<div class="service-icon" style="font-size:3rem; margin-bottom:1rem; text-align:center;">${promo.icon || '🏷️'}</div>`;
+
+                    card.innerHTML = `
+                        ${bgIcon}
+                        ${imageHTML}
+                        <div style="text-align:center; margin-bottom:0.8rem;">
+                            <span style="background:${promo.badge_color || '#f97316'}; color:white; padding:0.35rem 0.85rem; border-radius:20px; font-size:0.75rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;">${promo.badge}</span>
+                        </div>
+                        <h3 style="margin-bottom:0.5rem; text-align:center;">${promo.title}</h3>
+                        ${linkedKitsHtml}
+                        <p style="color:var(--gray-400); text-align:center; margin-bottom:1rem; font-size:0.95rem;">${promo.description}</p>
+                        <div style="text-align:center; margin-bottom:1.5rem; background:rgba(0,0,0,0.2); padding:1rem; border-radius:8px;">
+                            ${promo.original_price ? `<span style="text-decoration:line-through; color:var(--gray-500); margin-right:0.5rem; font-size:0.9rem;">${promo.original_price}</span>` : ''}
+                            <span style="font-size:1.6rem; font-weight:800; color:var(--primary);">${promo.promo_price}</span>
+                        </div>
+                        <ul style="color:var(--gray-300); font-size:0.9rem; padding:0; list-style:none; text-align:center; line-height:1.6; margin-bottom:1.5rem;">
+                            ${featuresHTML}
+                        </ul>
+                        <div style="text-align:center; margin-top:auto;">
+                            <a href="contacto.html?promo=${encodeURIComponent(promo.id)}" class="btn-primary" style="display:inline-block; text-decoration:none; width:100%;">Me interesa</a>
+                        </div>
+                    `;
+                    card.style.display = 'flex';
+                    card.style.flexDirection = 'column';
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error('❌ Error al cargar promociones:', err);
+                container.innerHTML = '<p style="text-align:center; width:100%; color:#ef4444; padding: 3rem;">Error cargando promociones</p>';
+            }
+        }
+
+        // Ejecutar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadHomePromosFromSupabase);
+        } else {
+            loadHomePromosFromSupabase();
+        }
   </script>
 </body>
 

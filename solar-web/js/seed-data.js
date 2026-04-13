@@ -129,15 +129,13 @@ function initializeSeedData() {
     
     try {
         localStorage.setItem('solar_kits', JSON.stringify(SEED_DATA.kits));
-        localStorage.setItem('solar_promos', JSON.stringify(SEED_DATA.promos));
-        // Nombres alternos para compatibilidad
+        localStorage.setItem('solar_promotions', JSON.stringify(SEED_DATA.promos));
         localStorage.setItem('solar_contactos', JSON.stringify(SEED_DATA.contactos));
-        localStorage.setItem('solar_quotes', JSON.stringify(SEED_DATA.contactos)); // Cotizaciones = contactos
+        localStorage.setItem('solar_quotes', JSON.stringify(SEED_DATA.contactos));
         console.log('✅ Datos iniciales cargados en localStorage');
     } catch (error) {
         console.error('❌ Error al cargar datos iniciales:', error);
     }
-}
 }
 
 // Call on page load

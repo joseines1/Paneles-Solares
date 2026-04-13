@@ -1,44 +1,8 @@
 // admin-kits.js
 // Logic for managing Products/Kits in the admin panel
+// Usando Supabase como base de datos
 
-let kits = JSON.parse(localStorage.getItem('solar_kits'));
-
-// Default kits if none exist
-if (!kits || kits.length === 0) {
-    kits = [
-        {
-            id: 1,
-            name: "Kit Residencial Básico 2kW",
-            capacity: 2.2,
-            price: 45000,
-            stock: 15,
-            status: "Activo",
-            description: "Sistema básico para reducir tarifa DAC en consumos moderados.",
-            features: "4 Paneles 550W, Microinversor 2kW, Estructura coplanar, Trámite CFE"
-        },
-        {
-            id: 2,
-            name: "Kit Residencial Plus 5kW",
-            capacity: 5.5,
-            price: 85000,
-            stock: 8,
-            status: "Activo",
-            description: "Ideal para casas grandes con 2-3 minisplits.",
-            features: "10 Paneles 550W, Inversor central 5kW, Monitoreo WiFi, Protecciones DC/AC"
-        },
-        {
-            id: 3,
-            name: "Kit Comercial Trifásico 10kW",
-            capacity: 11.0,
-            price: 160000,
-            stock: 5,
-            status: "Activo",
-            description: "Solución para negocios, oficinas o talleres con tarifa GDMTO.",
-            features: "20 Paneles 550W, Inversor Trifásico 10kW, Estructura inclinada, Ingeniería"
-        }
-    ];
-    localStorage.setItem('solar_kits', JSON.stringify(kits));
-}
+let kits = [];
 
 let editingKitId = null;
 let currentKitImageBase64 = null;
@@ -82,8 +46,26 @@ function setupImageListeners() {
 }
 
 function loadKits() {
-    kits = JSON.parse(localStorage.getItem('solar_kits')) || [];
-    renderKits();
+    if (!supabaseClient) {
+        console.error('Supabase no está disponible');
+        kits = [];
+        renderKits();
+        return;
+    }
+
+    supabaseClient
+        .from('kits')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+            if (error) {
+                console.error('Error cargando kits:', error);
+                kits = [];
+            } else {
+                kits = data || [];
+            }
+            renderKits();
+        });
 }
 
 function renderKits() {
@@ -193,6 +175,11 @@ function closeKitModal() {
 function saveKit(event) {
     event.preventDefault();
 
+    if (!supabaseClient) {
+        showNotification('Error: Supabase no disponible', 'error');
+        return;
+    }
+
     const name = document.getElementById('kitName').value.trim();
     const capacity = parseFloat(document.getElementById('kitCapacity').value);
     const price = parseFloat(document.getElementById('kitPrice').value);
@@ -201,40 +188,75 @@ function saveKit(event) {
     const description = document.getElementById('kitDesc').value.trim();
     const features = document.getElementById('kitFeatures').value.trim();
     
-    // Obtener la imagen
     const urlValue = document.getElementById('kitImageURL') ? document.getElementById('kitImageURL').value.trim() : '';
     const image = currentKitImageBase64 ? currentKitImageBase64 : urlValue;
 
-    if (editingKitId) {
-        const index = kits.findIndex(k => k.id === editingKitId);
-        if (index !== -1) {
-            kits[index] = {
-                id: editingKitId,
-                name, capacity, price, stock, status, description, features, image
-            };
-        }
-    } else {
-        const newId = kits.length > 0 ? Math.max(...kits.map(k => k.id)) + 1 : 1;
-        kits.push({
-            id: newId,
-            name, capacity, price, stock, status, description, features, image
-        });
-    }
+    const kitData = {
+        name,
+        capacity,
+        price,
+        stock,
+        status,
+        description,
+        features,
+        image,
+        category: 'Residencial',
+        panels: Math.round(capacity / 0.55),
+        inverter: capacity
+    };
 
-    localStorage.setItem('solar_kits', JSON.stringify(kits));
-    renderKits();
-    closeKitModal();
-    
-    window.dispatchEvent(new Event('storage'));
+    if (editingKitId) {
+        supabaseClient
+            .from('kits')
+            .update(kitData)
+            .eq('id', editingKitId)
+            .then(({ error }) => {
+                if (error) {
+                    showNotification('Error actualizando producto', 'error');
+                    console.error('Error:', error);
+                } else {
+                    showNotification('Producto actualizado correctamente', 'success');
+                    loadKits();
+                    closeKitModal();
+                }
+            });
+    } else {
+        supabaseClient
+            .from('kits')
+            .insert([{ ...kitData, created_at: new Date().toISOString() }])
+            .then(({ error }) => {
+                if (error) {
+                    showNotification('Error creando producto', 'error');
+                    console.error('Error:', error);
+                } else {
+                    showNotification('Producto creado correctamente', 'success');
+                    loadKits();
+                    closeKitModal();
+                }
+            });
+    }
 }
 
 function deleteKit(id) {
+    if (!supabaseClient) {
+        showNotification('Error: Supabase no disponible', 'error');
+        return;
+    }
+
     if (confirm("¿Estás seguro de eliminar este producto?")) {
-        kits = kits.filter(k => k.id !== id);
-        localStorage.setItem('solar_kits', JSON.stringify(kits));
-        renderKits();
-        
-        window.dispatchEvent(new Event('storage'));
+        supabaseClient
+            .from('kits')
+            .delete()
+            .eq('id', id)
+            .then(({ error }) => {
+                if (error) {
+                    showNotification('Error eliminando producto', 'error');
+                    console.error('Error:', error);
+                } else {
+                    showNotification('Producto eliminado correctamente', 'success');
+                    loadKits();
+                }
+            });
     }
 }
 

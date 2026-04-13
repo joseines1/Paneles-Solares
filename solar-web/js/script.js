@@ -174,16 +174,54 @@ function initProjectFilter() {
 
 initProjectFilter();
 
-/* --- Formulario de contacto (manejado por formsubmit.co) --- */
+/* --- Formulario de contacto (Persistencia Local + Email) --- */
 function initContactForm() {
-    // El formulario usa action="https://formsubmit.co/..." para enviar por email.
-    // No se requiere JS adicional. Solo mostramos el mensaje de éxito si hay ?success=1
-    const success = document.getElementById('formSuccess');
-    if (success && new URLSearchParams(location.search).get('success') === '1') {
-        const form = document.getElementById('contactForm');
-        if (form) form.style.display = 'none';
-        success.style.display = 'block';
+    const contactForm = document.getElementById('contactForm');
+    const successMsg = document.getElementById('formSuccess');
+
+    // Mostrar éxito si viene de redirección formsubmit
+    if (successMsg && new URLSearchParams(location.search).get('success') === '1') {
+        if (contactForm) contactForm.style.display = 'none';
+        successMsg.style.display = 'block';
     }
+
+    if (!contactForm) return;
+
+    contactForm.addEventListener('submit', async function(e) {
+        // Capturar datos del formulario
+        const formData = new FormData(contactForm);
+        const newLead = {
+            nombre: formData.get('name') || formData.get('nombre'),
+            email: formData.get('email'),
+            telefono: formData.get('phone') || formData.get('telefono'),
+            empresa: formData.get('company') || formData.get('empresa') || 'Particular',
+            servicio: formData.get('service') || formData.get('servicio') || 'Consulta General',
+            mensaje: formData.get('message') || formData.get('mensaje'),
+            status: 'Nuevo',
+            crmNote: 'Registrado vía sitio web',
+            created_at: new Date().toISOString()
+        };
+
+        // Guardar en Supabase (REAL DATA)
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            try {
+                const { error } = await supabaseClient
+                    .from('contacts')
+                    .insert([newLead]);
+
+                if (error) throw error;
+                console.log('✅ Lead guardado en Supabase');
+            } catch (err) {
+                console.error('❌ Error guardando lead en Supabase:', err);
+                // Fallback a localStorage por si acaso
+                const existing = JSON.parse(localStorage.getItem('solar_contactos') || '[]');
+                existing.unshift({...newLead, id: Date.now()});
+                localStorage.setItem('solar_contactos', JSON.stringify(existing));
+            }
+        }
+
+        // El formulario continuará con su acción (enviar a formsubmit.co para el email)
+    });
 }
 
 initContactForm();

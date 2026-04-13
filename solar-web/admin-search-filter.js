@@ -512,31 +512,64 @@ function showNotification(message, type = 'info') {
 
 // ====== Funciones para cotizaciones ======
 
-window.updateStatus = function(id, newStatus) {
-    const quote = quotes.find(q => q.id === id);
-    if (quote) {
-        quote.status = newStatus;
-        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+window.updateStatus = async function(id, newStatus) {
+    if (!supabaseClient) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('contacts')
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        showNotification(`Estado actualizado a: ${newStatus}`, 'success');
+        if (typeof loadContactsData === 'function') await loadContactsData();
         renderFilteredData();
+    } catch (err) {
+        console.error('Error:', err);
+        showNotification('Error al actualizar estado', 'error');
     }
 };
 
-window.updateNote = function(id, noteText) {
-    const quote = quotes.find(q => q.id === id);
-    if (quote) {
-        quote.crmNote = noteText;
-        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+// Actualizar nota interna en Supabase
+window.updateNote = async function(id, noteText) {
+    if (!supabaseClient) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('contacts')
+            .update({ crmNote: noteText, updated_at: new Date().toISOString() })
+            .eq('id', id);
+
+        if (error) throw error;
+        
+        showNotification('Nota guardada', 'success');
+        if (typeof loadContactsData === 'function') await loadContactsData();
+    } catch (err) {
+        console.error('Error:', err);
+        showNotification('Error al guardar nota', 'error');
     }
 };
 
-window.deleteQuote = function(id) {
-    const quote = quotes.find(q => q.id === id);
-    if (!quote) return;
-    
-    if (confirm(`¿Eliminar cotización de "${quote.nombre}"?\n\nCliente: ${quote.email}`)) {
-        quotes = quotes.filter(q => q.id !== id);
-        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+// Eliminar lead permanentemente de Supabase
+window.deleteQuote = async function(id) {
+    if (!confirm('¿Seguro que deseas eliminar este lead permanentemente de la base de datos?')) return;
+    if (!supabaseClient) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('contacts')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        showNotification('Lead eliminado', 'success');
+        if (typeof loadContactsData === 'function') await loadContactsData();
         renderFilteredData();
-        showNotification('Cotización eliminada', 'success');
+    } catch (err) {
+        console.error('Error:', err);
+        showNotification('Error al eliminar lead', 'error');
     }
 };

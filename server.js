@@ -213,7 +213,7 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-// API: Obtener lista de contactos desde Supabase
+// ========== API: CONTACTOS/MENSAJES ==========
 app.get('/api/contacts', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -221,14 +221,229 @@ app.get('/api/contacts', async (req, res) => {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error leyendo contacts:', error);
-      return res.status(500).json({ error: error.message });
-    }
-
+    if (error) throw error;
     res.json(data || []);
   } catch (error) {
-    console.error('Error reading contacts:', error);
+    console.error('Error leyendo contactos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/contacts/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/contacts/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .update({ ...req.body, updated_at: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/contacts/:id', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('contacts')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== API: KITS/PRODUCTOS ==========
+app.get('/api/kits', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('kits')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/kits', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('kits')
+      .insert([{ ...req.body, created_at: new Date().toISOString() }])
+      .select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/kits/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('kits')
+      .update(req.body)
+      .eq('id', req.params.id)
+      .select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/kits/:id', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('kits')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== API: PROMOCIONES ==========
+app.get('/api/promotions', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('promotions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/promotions', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('promotions')
+      .insert([{ ...req.body, created_at: new Date().toISOString() }])
+      .select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/promotions/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('promotions')
+      .update(req.body)
+      .eq('id', req.params.id)
+      .select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/promotions/:id', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('promotions')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== API: PROYECTOS ==========
+app.get('/api/projects', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/projects', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([{ ...req.body, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }])
+      .select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/projects/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .update({ ...req.body, updated_at: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== API: SERVICIOS ==========
+app.get('/api/services', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('is_active', true);
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

@@ -21,6 +21,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/estilos.css?v=1.0.0" />
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js?v=1.0.0"></script>
     <script src="js/auth-config.js?v=1.0.0"></script>
     <script src="js/seed-data.js?v=1.0.0"></script>
     <style>
@@ -315,33 +318,50 @@
     <script src="js/script.js?v=1.0.0"></script>
     
     <script>
-        // Cargar kits desde localStorage (guardados por el admin)
-        function loadKitsFromLocalStorage() {
+        // Cargar kits desde Supabase (REAL DATA)
+        async function loadKitsFromSupabase() {
             const kitsContainer = document.getElementById('kitsContainer');
-            const kits = JSON.parse(localStorage.getItem('solar_kits') || '[]');
-            const activos = kits.filter(k => k.status !== 'Oculto');
-
-            if (!activos.length) {
-                kitsContainer.innerHTML = `
-                    <div style="width:100%;text-align:center;padding:4rem 2rem;color:var(--gray-400);">
-                        <div style="font-size:3rem;margin-bottom:1rem;">☀️</div>
-                        <h3 style="color:var(--gray-300);">Próximamente</h3>
-                        <p>Estamos preparando nuestro catálogo de kits. Contáctanos para una cotización personalizada.</p>
-                        <a href="contacto.html" class="btn-primary" style="display:inline-block;margin-top:1rem;">Solicitar cotización</a>
-                    </div>`;
+            if (!kitsContainer) return;
+            
+            const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+            
+            if (!client) {
+                console.warn('⚠️ Supabase Client no está listo todavía. Reintentando en 500ms...');
+                setTimeout(loadKitsFromSupabase, 500);
                 return;
             }
 
-            kitsContainer.innerHTML = '';
+            try {
+                const { data, error } = await client
+                    .from('kits')
+                    .select('*')
+                    .order('name', { ascending: true });
 
-            activos.forEach(kit => {
-                const card = createKitCard(kit);
-                kitsContainer.appendChild(card);
-            });
+                if (error) throw error;
+                
+                const activos = data ? data.filter(k => k.status !== 'Oculto') : [];
 
-            // Actualizar contador en el tab
-            const tab = document.getElementById('tabTodos');
-            if (tab) tab.textContent = `Kits Solares (${activos.length})`;
+                if (activos.length === 0) {
+                    kitsContainer.innerHTML = `
+                        <div style="width:100%;text-align:center;padding:4rem 2rem;color:var(--gray-400);">
+                            <div style="font-size:3rem;margin-bottom:1rem;">☀️</div>
+                            <h3 style="color:var(--gray-300);">Próximamente</h3>
+                            <p>Estamos preparando nuestro catálogo de kits. Contáctanos para una cotización personalizada.</p>
+                            <a href="contacto.html" class="btn-primary" style="display:inline-block;margin-top:1rem;">Solicitar cotización</a>
+                        </div>`;
+                    return;
+                }
+
+                kitsContainer.innerHTML = '';
+                activos.forEach(kit => {
+                    kitsContainer.appendChild(createKitCard(kit));
+                });
+
+                const tab = document.getElementById('tabTodos');
+                if (tab) tab.textContent = `Kits Solares (${activos.length})`;
+            } catch (err) {
+                console.error('Error al cargar kits:', err);
+            }
         }
         
         // Crear tarjeta de kit
@@ -352,7 +372,6 @@
             card.style.cssText = 'display: flex; flex-direction: column; background: var(--secondary-mid); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; height: 100%;';
             
             let kitImage = kit.image || (kit.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
-            
             const featuresList = kit.features ? kit.features.split(',').map(f => `<li>${f.trim()}</li>`).join('') : '';
             
             card.innerHTML = `
@@ -385,10 +404,8 @@
             return card;
         }
         
-        // Cargar kits cuando la página esté lista
-        document.addEventListener('DOMContentLoaded', function() {
-            loadKitsFromLocalStorage();
-        });
+        // Cargar kits cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', loadKitsFromSupabase);
         
         // Escuchar cambios en localStorage para actualizar en tiempo real
         window.addEventListener('storage', function(e) {
