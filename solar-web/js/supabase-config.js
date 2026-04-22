@@ -18,7 +18,7 @@ if (window.supabase) {
         // Sobrescribir auth con sistema personalizado
         window.supabaseClient.auth = {
             signInWithPassword: async ({ email, password }) => {
-                const ADMIN_EMAIL    = 'joseolivo78376@gmail.com';
+                const ADMIN_EMAIL    = 'pcnet_pn@hotmail.com';
                 const ADMIN_PASSWORD = 'Admin123!';
                 
                 if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {

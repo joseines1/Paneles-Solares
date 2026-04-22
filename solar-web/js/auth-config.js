@@ -2,7 +2,7 @@
 // No external dependencies, pure local auth for demo purposes
 
 const AUTH_CONFIG = {
-    ADMIN_EMAIL: 'joseolivo78376@gmail.com',
+    ADMIN_EMAIL: 'pcnet_pn@hotmail.com',
     ADMIN_PASSWORD: 'Admin123!',
     SESSION_KEY: 'solar_admin_session',
     SESSION_DURATION: 8 * 60 * 60 * 1000 // 8 hours
