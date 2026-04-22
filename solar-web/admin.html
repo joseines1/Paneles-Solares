@@ -22,7 +22,9 @@
     <!-- jsPDF para generar cotizaciones en PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
-    <!-- Supabase Config ELIMINADO para usar LocalSystem -->
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js?v=1.0.0"></script>
     <script src="js/auth-config.js?v=1.0.0"></script>
     <script src="js/seed-data.js?v=1.0.0"></script>
     <script src="admin-real-data.js?v=2.0.0"></script>
@@ -60,6 +62,9 @@
 
         .chart-container { position: relative; height: 300px; width: 100%; }
         
+        /* Modales: clase active los muestra */
+        .admin-modal-overlay.active { display: flex !important; }
+
         /* Notes CRM */
         .crm-notes { font-size: 0.8rem; color: var(--gray-400); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -278,7 +283,10 @@
                 <div class="data-section glass-panel">
                     <div class="section-header-admin">
                         <h2>Catálogo de Productos</h2>
-                        <button class="btn-success" onclick="showKitModal()">+ Crear Producto</button>
+                        <div style="display:flex;gap:0.75rem;">
+                            <button class="btn-success" onclick="showProductModal()">+ Crear Producto</button>
+                            <button class="btn-success" onclick="showKitBundleModal()">+ Crear Kit</button>
+                        </div>
                     </div>
 
                     <div class="table-responsive" style="margin-top:1rem;">
@@ -336,51 +344,301 @@
         </div>
     </main>
 
-    <!-- Modals (Productos, Promos, etc.) se mantienen igual ya que son controlados por sus respectivos scripts -->
-    <!-- [MODALS OMITTED FOR BREVITY AS THEY ARE MOSTLY UI] -->
+    <!-- ===== MODAL: PRODUCTO INDIVIDUAL ===== -->
+    <div id="productModal" class="admin-modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:var(--secondary-dark); border:1px solid rgba(255,255,255,0.1); border-radius:12px; width:90%; max-width:600px; max-height:90vh; overflow-y:auto; padding:2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 id="productModalTitle" style="color:#fff;">🔩 Crear Producto</h3>
+                <button onclick="closeProductModal()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+            <form id="productForm">
+                <div class="grid-2">
+                    <div class="admin-form-group">
+                        <label>Nombre del Producto *</label>
+                        <input type="text" id="productName" class="admin-input" required placeholder="Panel Solar 550W Monocristalino">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Capacidad (kW) *</label>
+                        <input type="number" id="productCapacity" class="admin-input" required step="0.01" min="0" placeholder="0.55">
+                    </div>
+                </div>
+                <div class="grid-3">
+                    <div class="admin-form-group">
+                        <label>Precio (MXN) *</label>
+                        <input type="number" id="productPrice" class="admin-input" required min="0" placeholder="4500">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Stock *</label>
+                        <input type="number" id="productStock" class="admin-input" required min="0" placeholder="50">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Estado</label>
+                        <select id="productStatus" class="admin-select">
+                            <option value="Activo">Activo</option>
+                            <option value="Agotado">Agotado</option>
+                            <option value="Oculto">Oculto</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="admin-form-group">
+                    <label>Descripción</label>
+                    <textarea id="productDesc" class="admin-input admin-textarea" rows="2" placeholder="Descripción del producto..."></textarea>
+                </div>
+                <div class="admin-form-group">
+                    <label>Características (separadas por coma)</label>
+                    <input type="text" id="productFeatures" class="admin-input" placeholder="Monocristalino, Garantía 25 años, Eficiencia 21%">
+                </div>
+                <div class="admin-form-group">
+                    <label>URL de Imagen</label>
+                    <input type="url" id="productImageURL" class="admin-input" placeholder="https://...">
+                </div>
+                <div class="admin-form-group">
+                    <label>O subir imagen</label>
+                    <input type="file" id="productImageFile" class="admin-input" accept="image/*">
+                    <img id="productImagePreview" class="cms-img-preview" style="display:none;">
+                </div>
+                <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:1rem;">
+                    <button type="button" onclick="closeProductModal()" class="btn-danger">Cancelar</button>
+                    <button type="submit" class="btn-success">Guardar Producto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: KIT SOLAR (con selección de productos) ===== -->
+    <div id="kitModal" class="admin-modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:var(--secondary-dark); border:1px solid rgba(255,255,255,0.1); border-radius:12px; width:90%; max-width:660px; max-height:90vh; overflow-y:auto; padding:2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 id="kitModalTitle" style="color:#fff;">📦 Crear Kit Solar</h3>
+                <button onclick="closeKitModal()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+            <form id="kitForm">
+                <div class="grid-2">
+                    <div class="admin-form-group">
+                        <label>Nombre del Kit *</label>
+                        <input type="text" id="kitName" class="admin-input" required placeholder="Kit Residencial 3kW">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Capacidad (kW) *</label>
+                        <input type="number" id="kitCapacity" class="admin-input" required step="0.1" min="0" placeholder="3.0">
+                    </div>
+                </div>
+                <div class="grid-3">
+                    <div class="admin-form-group">
+                        <label>Precio (MXN) *</label>
+                        <input type="number" id="kitPrice" class="admin-input" required min="0" placeholder="55000">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Stock *</label>
+                        <input type="number" id="kitStock" class="admin-input" required min="0" placeholder="10">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Estado</label>
+                        <select id="kitStatus" class="admin-select">
+                            <option value="Activo">Activo</option>
+                            <option value="Agotado">Agotado</option>
+                            <option value="Oculto">Oculto</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Selección de productos incluidos -->
+                <div class="admin-form-group">
+                    <label>Productos incluidos en este Kit</label>
+                    <div id="kitProductsChecklist" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:0.75rem; max-height:180px; overflow-y:auto;">
+                        <span style="color:var(--gray-400); font-size:0.85rem;">Cargando productos...</span>
+                    </div>
+                    <small style="color:var(--gray-400);">Selecciona los productos que componen este kit.</small>
+                </div>
+
+                <div class="admin-form-group">
+                    <label>Descripción</label>
+                    <textarea id="kitDesc" class="admin-input admin-textarea" rows="2" placeholder="Descripción del kit..."></textarea>
+                </div>
+                <div class="admin-form-group">
+                    <label>Características adicionales (separadas por coma)</label>
+                    <input type="text" id="kitFeatures" class="admin-input" placeholder="Instalación incluida, Garantía 25 años, Trámite CFE">
+                </div>
+                <div class="admin-form-group">
+                    <label>URL de Imagen</label>
+                    <input type="url" id="kitImageURL" class="admin-input" placeholder="https://...">
+                </div>
+                <div class="admin-form-group">
+                    <label>O subir imagen</label>
+                    <input type="file" id="kitImageFile" class="admin-input" accept="image/*">
+                    <img id="kitImagePreview" class="cms-img-preview" style="display:none;">
+                </div>
+                <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:1rem;">
+                    <button type="button" onclick="closeKitModal()" class="btn-danger">Cancelar</button>
+                    <button type="submit" class="btn-success">Guardar Kit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: PROMOCIÓN ===== -->
+    <div id="promoModal" class="admin-modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:var(--secondary-dark); border:1px solid rgba(255,255,255,0.1); border-radius:12px; width:90%; max-width:650px; max-height:90vh; overflow-y:auto; padding:2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 id="promoModalTitle" style="color:#fff;">Crear Promoción</h3>
+                <button onclick="closePromoModal()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+            <form id="promoForm">
+                <div class="admin-form-group">
+                    <label>Título *</label>
+                    <input type="text" id="promoTitle" class="admin-input" required placeholder="30% Descuento en Kits Residenciales">
+                </div>
+                <div class="admin-form-group">
+                    <label>Descripción</label>
+                    <textarea id="promoDesc" class="admin-input admin-textarea" rows="2" placeholder="Descripción de la promoción..."></textarea>
+                </div>
+                <div class="grid-2">
+                    <div class="admin-form-group">
+                        <label>Precio Original</label>
+                        <input type="text" id="promoOrigPrice" class="admin-input" placeholder="$65,000 MXN">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Precio Promoción *</label>
+                        <input type="text" id="promoPrice" class="admin-input" required placeholder="$54,999 MXN">
+                    </div>
+                </div>
+                <div class="grid-3">
+                    <div class="admin-form-group">
+                        <label>Etiqueta (Badge) *</label>
+                        <input type="text" id="promoBadge" class="admin-input" required placeholder="DESCUENTO">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Color Badge</label>
+                        <input type="color" id="promoBadgeColor" class="admin-input" value="#f97316" style="height:42px; padding:4px;">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Ícono (emoji)</label>
+                        <input type="text" id="promoIcon" class="admin-input" placeholder="🏷️" maxlength="4">
+                    </div>
+                </div>
+                <div class="admin-form-group">
+                    <label>Características (separadas por coma)</label>
+                    <input type="text" id="promoFeatures" class="admin-input" placeholder="Instalación incluida, Garantía 10 años">
+                </div>
+                <div class="admin-form-group">
+                    <label>Productos vinculados</label>
+                    <select id="promoProductSelect" class="admin-select" multiple style="height:120px;" onchange="updatePromoLinkedImagesPreview()">
+                    </select>
+                    <small style="color:var(--gray-400);">Ctrl+clic para seleccionar varios</small>
+                    <div id="promoLinkedImagesPreview" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem;"></div>
+                </div>
+                <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:1rem;">
+                    <button type="button" onclick="closePromoModal()" class="btn-danger">Cancelar</button>
+                    <button type="submit" class="btn-success">Guardar Promoción</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- App Logic -->
     <script>
-        // Funciones de utilidad global que antes estaban en supabase-config
         window.calculateRealMetrics = typeof calculateRealMetrics === 'function' ? calculateRealMetrics : function(data) {
             return { totalLeads: data.length, newQuotes: 0, inProcess: 0, closedSales: 0, projectedIncome: 0 };
         };
 
+        let conversionChartInstance = null;
+
         function renderAllData() {
             if (typeof calculateRealMetrics === 'function') {
-                let metrics = calculateRealMetrics(quotes);
-                
+                let metrics = calculateRealMetrics(window.quotes || []);
                 document.getElementById('kpi-leads').textContent = metrics.totalLeads;
                 document.getElementById('kpi-pending').textContent = metrics.newQuotes + metrics.inProcess;
                 document.getElementById('kpi-closed').textContent = metrics.closedSales;
-                
-                const income = metrics.projectedIncome.toLocaleString('es-MX');
-                document.getElementById('kpi-income').textContent = `$${income}`;
+                document.getElementById('kpi-income').textContent = `$${metrics.projectedIncome.toLocaleString('es-MX')}`;
             }
 
-            if (typeof renderFilteredData === 'function') {
-                renderFilteredData();
+            // Inicializar/actualizar gráfica
+            if (typeof Chart !== 'undefined') {
+                const ctx = document.getElementById('conversionChart');
+                if (ctx) {
+                    const chartData = typeof generateRealMonthlyData === 'function'
+                        ? generateRealMonthlyData(window.quotes || [])
+                        : { labels: [], values: [] };
+                    if (conversionChartInstance) conversionChartInstance.destroy();
+                    conversionChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: chartData.labels,
+                            datasets: [{
+                                label: 'Leads por mes',
+                                data: chartData.values,
+                                backgroundColor: 'rgba(249,115,22,0.6)',
+                                borderColor: '#f97316',
+                                borderWidth: 2,
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#94a3b8' } } },
+                            scales: {
+                                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+                            }
+                        }
+                    });
+                }
             }
+
+            if (typeof renderFilteredData === 'function') renderFilteredData();
         }
 
-        // Sidebar behavior simple
+        // Sidebar toggle
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.getElementById('adminSidebar');
-        const closeSidebar = document.getElementById('closeSidebar');
+        const closeSidebarBtn = document.getElementById('closeSidebar');
+        if (menuToggle) menuToggle.addEventListener('click', () => sidebar.classList.add('open'));
+        if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', () => sidebar.classList.remove('open'));
 
-        if(menuToggle) menuToggle.addEventListener('click', () => sidebar.classList.add('open'));
-        if(closeSidebar) closeSidebar.addEventListener('click', () => sidebar.classList.remove('open'));
+        // Navegación por secciones
+        document.getElementById('adminNav').addEventListener('click', function(e) {
+            const li = e.target.closest('li[data-target]');
+            if (!li) return;
+            e.preventDefault();
+            const target = li.dataset.target;
+            document.querySelectorAll('#adminNav li').forEach(el => el.classList.remove('active'));
+            li.classList.add('active');
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            const section = document.getElementById(target);
+            if (section) section.classList.add('active');
+            if (window.innerWidth < 768) sidebar.classList.remove('open');
+        });
 
-        // Reactividad Local
+        // Modales: cerrar al hacer clic fuera
+        document.querySelectorAll('.admin-modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', e => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                    overlay.style.display = '';
+                }
+            });
+        });
+
+        // Sobrescribir showPromoModal para mostrar con flex
+
+        const _origShowPromoModal = window.showPromoModal;
+        window.showPromoModal = function(id) {
+            if (typeof populateProductSelectForPromos === 'function') populateProductSelectForPromos();
+            if (_origShowPromoModal) _origShowPromoModal(id);
+            else { document.getElementById('promoModal').style.display = 'flex'; }
+        };
+
+        // Reactividad desde otra pestaña
         window.addEventListener('storage', (e) => {
             if (['solar_quotes', 'solar_contactos', 'solar_kits', 'solar_promotions'].includes(e.key)) {
-                console.log('Detectados cambios en otra pestaña, recargando...');
                 if (typeof initializeAdmin === 'function') initializeAdmin();
             }
         });
+
+        // Inicializar filtros de búsqueda
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof initializeSearchFilters === 'function') initializeSearchFilters();
+        });
     </script>
 </body>
-</html>
-</body>
-
 </html>

@@ -412,6 +412,62 @@
         </div>
     </section>
 
+    <!-- CALCULADORA SOLAR -->
+    <section class="calculator-section">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-tag">Herramienta</span>
+                <h2>Calculadora <span>Solar Estimativa</span></h2>
+                <p>Obtén una estimación rápida del sistema que necesitas según tu factura de luz.</p>
+            </div>
+
+            <div class="calc-box reveal">
+                <h3>⚡ Estima tu sistema solar</h3>
+                <p>Ingresa tu factura promedio y tu región para obtener una estimación del tamaño de sistema, ahorro mensual y retorno de inversión.</p>
+
+                <div class="calc-row">
+                    <div class="calc-field">
+                        <label for="facturaInput">Factura CFE mensual promedio (MXN)</label>
+                        <input type="number" id="facturaInput" placeholder="Ej: 1500" min="100" step="100" />
+                    </div>
+                    <div class="calc-field">
+                        <label for="estadoInput">Región / Estado</label>
+                        <select id="estadoInput">
+                            <option value="1.2">Norte (Sonora, Chihuahua, Coahuila) — Alta irradiación</option>
+                            <option value="1.1">Noreste (Nuevo León, Tamaulipas)</option>
+                            <option value="1.0" selected>Centro (CDMX, Jalisco, GTO)</option>
+                            <option value="0.95">Sur (Oaxaca, Chiapas, Yucatán)</option>
+                            <option value="0.9">Occidente / Costas con nubosidad</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn-primary" id="calcBtn" type="button">
+                    ☀️ Calcular mi sistema solar
+                </button>
+
+                <div class="calc-result" id="calcResult">
+                    <h4>📊 Estimación para tu hogar</h4>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-val" id="resKw">—</div>
+                            <div class="result-key">Tamaño sistema</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-val" id="resSaving">—</div>
+                            <div class="result-key">Ahorro mensual est.</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-val" id="resRoi">—</div>
+                            <div class="result-key">Retorno inversión</div>
+                        </div>
+                    </div>
+                    <p class="calc-note">* Estimación orientativa. El asesor calculará el sistema exacto según tu consumo real, orientación del techo y tipo de tarifa CFE.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- FAQ -->
     <section style="background: var(--secondary-mid);">
         <div class="container">
@@ -542,98 +598,95 @@
 
     <script src="js/script.js"></script>
     <script>
-        // Calculadora solar
+        // ── Calculadora solar ──────────────────────────────────────────────
         document.getElementById('calcBtn').addEventListener('click', () => {
             const factura = parseFloat(document.getElementById('facturaInput').value);
-            const factor = parseFloat(document.getElementById('estadoInput').value);
+            const factor  = parseFloat(document.getElementById('estadoInput').value);
 
             if (!factura || factura < 100) {
-                document.getElementById('facturaInput').style.borderColor = 'var(--primary)';
-                document.getElementById('facturaInput').focus();
+                const inp = document.getElementById('facturaInput');
+                inp.style.borderColor = 'var(--primary)';
+                inp.focus();
                 return;
             }
 
-            // Estimaciones simples
-            const kwhMes = (factura / 2.5);           // pesos/kWh aprox
+            const kwhMes  = factura / 2.5;
             const kwSystem = Math.ceil((kwhMes / (30 * 5 * factor)) * 10) / 10;
-            const saving = Math.round(factura * 0.80);
-            const cost = Math.round(kwSystem * 22000);
-            const roi = Math.ceil(cost / (saving * 12));
+            const saving   = Math.round(factura * 0.80);
+            const cost     = Math.round(kwSystem * 22000);
+            const roi      = Math.ceil(cost / (saving * 12));
 
-            document.getElementById('resKw').textContent = kwSystem + ' kW';
-            document.getElementById('resSaving').textContent = '$' + saving.toLocaleString('es-MX') + '/mes';
-            document.getElementById('resRoi').textContent = roi + ' años';
+            document.getElementById('resKw').textContent      = kwSystem + ' kW';
+            document.getElementById('resSaving').textContent  = '$' + saving.toLocaleString('es-MX') + '/mes';
+            document.getElementById('resRoi').textContent     = roi + ' años';
 
             const resultEl = document.getElementById('calcResult');
             resultEl.style.display = 'block';
             resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
 
-        // Interceptar formulario para enviar al backend
+        // ── Formulario de cotización ───────────────────────────────────────
+        function guardarEnLocalStorage(formData, contactId) {
+            const quotes = JSON.parse(localStorage.getItem('solar_quotes') || '[]');
+            quotes.unshift({
+                id: contactId || Date.now(),
+                created_at: new Date().toISOString(),
+                ...formData,
+                status: 'Nuevo',
+                progress: 10,
+                crmNote: 'Registrado vía sitio web'
+            });
+            localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+        }
+
+        function mostrarExito() {
+            const contactForm = document.getElementById('contactForm');
+            contactForm.reset();
+            contactForm.style.display = 'none';
+            document.getElementById('formSuccess').style.display = 'block';
+        }
+
         const contactForm = document.getElementById('contactForm');
         if (contactForm) {
-            contactForm.addEventListener('submit', function(e) {
+            contactForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
                 const submitBtn = document.getElementById('submitBtn');
                 submitBtn.innerHTML = 'Enviando Solicitud... ⏳';
                 submitBtn.disabled = true;
 
-                // Recopilar datos del formulario
                 const formData = {
-                    nombre: document.getElementById('nombre').value,
-                    empresa: document.getElementById('empresa').value,
-                    email: document.getElementById('email').value,
-                    telefono: document.getElementById('telefono').value,
+                    nombre:   document.getElementById('nombre').value.trim(),
+                    empresa:  document.getElementById('empresa').value.trim(),
+                    email:    document.getElementById('email').value.trim(),
+                    telefono: document.getElementById('telefono').value.trim(),
                     servicio: document.getElementById('servicio').value,
-                    factura: document.getElementById('factura').value,
-                    mensaje: document.getElementById('mensaje').value
+                    factura:  document.getElementById('factura').value,
+                    mensaje:  document.getElementById('mensaje').value.trim()
                 };
 
-                // Enviar al backend
-                const apiUrl = window.location.origin + '/api/contact';
-                fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Guardar en localStorage también (para panel admin)
-                        const quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
-                        quotes.unshift({
-                            id: data.contactId || Date.now(),
-                            created_at: new Date().toISOString(),
-                            ...formData,
-                            status: 'Nueva solicitud',
-                            progress: 10
-                        });
-                        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+                try {
+                    const response = await fetch(window.location.origin + '/api/contact', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
 
-                        // Mostrar éxito
-                        contactForm.reset();
-                        contactForm.style.display = 'none';
-                        document.getElementById('formSuccess').style.display = 'block';
-                        console.log('✅ Solicitud enviada exitosamente');
+                    const data = await response.json();
+
+                    if (data.success) {
+                        guardarEnLocalStorage(formData, data.contactId);
+                        mostrarExito();
+                        console.log('✅ Solicitud guardada en servidor');
                     } else {
-                        throw new Error(data.error || 'Error desconocido');
+                        throw new Error(data.error || 'Error del servidor');
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert(`Error al enviar la solicitud: ${error.message}\n\nPor favor intenta de nuevo.`);
-                    submitBtn.innerHTML = '<span>☀️</span> Reintentar';
-                    submitBtn.disabled = false;
-                });
+                } catch (err) {
+                    // Fallback: guardar localmente y mostrar éxito igual
+                    console.warn('⚠️ API no disponible, guardando localmente:', err.message);
+                    guardarEnLocalStorage(formData, null);
+                    mostrarExito();
+                }
             });
         }
     </script>

@@ -15,6 +15,19 @@ let searchState = {
 function searchClients(query) {
     searchState.query = query.toLowerCase().trim();
     searchState.currentPage = 1; // Resetear a primera página
+
+    // Navegar automáticamente a la sección CRM cuando hay búsqueda activa
+    if (searchState.query) {
+        const crmLi = document.querySelector('#adminNav li[data-target="sec-crm"]');
+        if (crmLi && !crmLi.classList.contains('active')) {
+            document.querySelectorAll('#adminNav li').forEach(el => el.classList.remove('active'));
+            crmLi.classList.add('active');
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            const section = document.getElementById('sec-crm');
+            if (section) section.classList.add('active');
+        }
+    }
+
     renderFilteredData();
 }
 
@@ -46,7 +59,7 @@ function sortBy(column) {
 
 // Función principal de filtrado y ordenamiento
 function getFilteredData() {
-    let filteredData = [...quotes];
+    let filteredData = [...(window.quotes || [])];
 
     // Aplicar búsqueda
     if (searchState.query) {
@@ -127,6 +140,7 @@ function renderFilteredData() {
 // Renderizar tabla CRM
 function renderCRMTable(data) {
     const crmTbody = document.getElementById('crmTableBody');
+    if (!crmTbody) return;
     crmTbody.innerHTML = '';
     
     data.forEach(quote => {
@@ -168,6 +182,7 @@ function renderCRMTable(data) {
 // Renderizar tabla Cotizaciones con barra de progreso
 function renderQuotesTable(data) {
     const quotesTbody = document.getElementById('quotesTableBody');
+    if (!quotesTbody) return;
     quotesTbody.innerHTML = '';
     
     data.forEach(quote => {
@@ -219,8 +234,7 @@ function renderQuotesTable(data) {
                         
                         <!-- Acciones -->
                         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                            <button class="btn-action-sm" title="Descargar PDF" onclick="generateQuotationPDF(${pkId})">📄</button>
-                            <button class="btn-action-sm" title="Enviar por Email" onclick="sendQuotationByEmail(${pkId})">✉️</button>
+                            <button class="btn-action-sm" title="Armar cotización manual" onclick="openQuoteEditor(${pkId})" style="background:rgba(249,115,22,0.2);border-color:rgba(249,115,22,0.5);color:#f97316;">🧾 Cotizar</button>
                             <button class="btn-action-sm" title="Enviar por WhatsApp" onclick="sendQuotationByWhatsApp(${pkId})">💬</button>
                             <button class="btn-action-sm danger" title="Eliminar" onclick="deleteQuote(${pkId})">🗑️</button>
                         </div>
@@ -252,16 +266,11 @@ function renderQuotesTable(data) {
     });
 }
 
-// Actualizar nota de cotización
+// Actualizar nota de cotización (misma función que updateNote)
 function updateQuoteNote(quoteId, note) {
-    const quotes = JSON.parse(localStorage.getItem('solar_quotes')) || [];
-    const quote = quotes.find(q => q.id === quoteId);
-    if (quote) {
-        quote.crmNote = note;
-        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
-        showNotification('Nota actualizada', 'success');
-    }
+    window.updateNote(quoteId, note);
 }
+window.updateQuoteNote = updateQuoteNote;
 
 // Renderizar controles de paginación
 function renderPagination(totalItems) {
@@ -370,6 +379,13 @@ function initializeSearchFilters() {
     }
 }
 
+// Actualizar items por página
+function updateItemsPerPage(value) {
+    searchState.itemsPerPage = parseInt(value);
+    searchState.currentPage = 1;
+    renderFilteredData();
+}
+
 // Hacer funciones globales
 window.searchClients = searchClients;
 window.filterByStatus = filterByStatus;
@@ -377,11 +393,12 @@ window.filterByService = filterByService;
 window.sortBy = sortBy;
 window.changePage = changePage;
 window.initializeSearchFilters = initializeSearchFilters;
+window.updateItemsPerPage = updateItemsPerPage;
 
 // Funciones para editar y eliminar clientes
 window.editClient = function(id) {
-    const client = quotes.find(q => q.id === id);
-    if (!client) return;
+    const client = id ? (window.quotes || []).find(q => q.id === id) : null;
+    const isNew = !id;
     
     // Crear modal de edición
     const modal = document.createElement('div');
@@ -393,44 +410,44 @@ window.editClient = function(id) {
     
     modal.innerHTML = `
         <div style="background: var(--secondary-dark); padding: 2rem; border-radius: 12px; width: 90%; max-width: 500px; border: 1px solid rgba(255,255,255,0.1);">
-            <h3 style="margin-bottom: 1.5rem; color: var(--white);">Editar Cliente</h3>
+            <h3 style="margin-bottom: 1.5rem; color: var(--white);">${isNew ? 'Crear Lead' : 'Editar Cliente'}</h3>
             <form id="editClientForm">
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--gray-300);">Nombre *</label>
-                    <input type="text" id="editNombre" value="${client.nombre || ''}" class="admin-input" required style="width: 100%;">
+                    <input type="text" id="editNombre" value="${client ? (client.nombre || '') : ''}" class="admin-input" required style="width: 100%;">
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--gray-300);">Empresa</label>
-                    <input type="text" id="editEmpresa" value="${client.empresa || ''}" class="admin-input" style="width: 100%;">
+                    <input type="text" id="editEmpresa" value="${client ? (client.empresa || '') : ''}" class="admin-input" style="width: 100%;">
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--gray-300);">Email *</label>
-                    <input type="email" id="editEmail" value="${client.email || ''}" class="admin-input" required style="width: 100%;">
+                    <input type="email" id="editEmail" value="${client ? (client.email || '') : ''}" class="admin-input" required style="width: 100%;">
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--gray-300);">Teléfono *</label>
-                    <input type="tel" id="editTelefono" value="${client.telefono || ''}" class="admin-input" required style="width: 100%;">
+                    <input type="tel" id="editTelefono" value="${client ? (client.telefono || '') : ''}" class="admin-input" required style="width: 100%;">
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--gray-300);">Servicio</label>
                     <select id="editServicio" class="admin-select" style="width: 100%;">
                         <option value="">Seleccionar...</option>
-                        <option value="Instalación Residencial" ${client.servicio === 'Instalación Residencial' ? 'selected' : ''}>Instalación Residencial</option>
-                        <option value="Instalación Comercial" ${client.servicio === 'Instalación Comercial' ? 'selected' : ''}>Instalación Comercial</option>
-                        <option value="Instalación Industrial" ${client.servicio === 'Instalación Industrial' ? 'selected' : ''}>Instalación Industrial</option>
+                        <option value="Instalación Residencial" ${client && client.servicio === 'Instalación Residencial' ? 'selected' : ''}>Instalación Residencial</option>
+                        <option value="Instalación Comercial" ${client && client.servicio === 'Instalación Comercial' ? 'selected' : ''}>Instalación Comercial</option>
+                        <option value="Instalación Industrial" ${client && client.servicio === 'Instalación Industrial' ? 'selected' : ''}>Instalación Industrial</option>
                     </select>
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--gray-300);">Factura</label>
-                    <input type="text" id="editFactura" value="${client.factura || ''}" class="admin-input" style="width: 100%;">
+                    <input type="text" id="editFactura" value="${client ? (client.factura || '') : ''}" class="admin-input" style="width: 100%;">
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; color: var(--gray-300);">Mensaje</label>
-                    <textarea id="editMensaje" class="admin-input" rows="3" style="width: 100%; resize: vertical;">${client.mensaje || ''}</textarea>
+                    <textarea id="editMensaje" class="admin-input" rows="3" style="width: 100%; resize: vertical;">${client ? (client.mensaje || '') : ''}</textarea>
                 </div>
                 <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button type="button" onclick="this.closest('.modal-overlay').remove()" class="btn-secondary" style="padding: 0.5rem 1rem;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem;">Guardar Cambios</button>
+                    <button type="button" onclick="this.closest('.modal-overlay').remove()" class="btn-danger" style="padding: 0.5rem 1rem;">Cancelar</button>
+                    <button type="submit" class="btn-success" style="padding: 0.5rem 1rem;">${isNew ? 'Crear Lead' : 'Guardar Cambios'}</button>
                 </div>
             </form>
         </div>
@@ -442,8 +459,8 @@ window.editClient = function(id) {
     // Manejar envío del formulario
     document.getElementById('editClientForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        const updatedData = {
+
+        const formData = {
             nombre: document.getElementById('editNombre').value,
             empresa: document.getElementById('editEmpresa').value,
             email: document.getElementById('editEmail').value,
@@ -452,21 +469,32 @@ window.editClient = function(id) {
             factura: document.getElementById('editFactura').value,
             mensaje: document.getElementById('editMensaje').value
         };
-            // Actualizar en localStorage directamente
-            const index = quotes.findIndex(q => q.id === id);
-            if (index !== -1) {
-                quotes[index] = { ...quotes[index], ...updatedData };
-                localStorage.setItem('solar_quotes', JSON.stringify(quotes));
+
+        if (supabaseClient) {
+            try {
+                if (isNew) {
+                    const { error } = await supabaseClient.from('contacts').insert([{
+                        ...formData, status: 'Nuevo', crm_note: '', created_at: new Date().toISOString()
+                    }]);
+                    if (error) throw error;
+                    showNotification('Lead creado correctamente', 'success');
+                } else {
+                    const { error } = await supabaseClient.from('contacts').update({
+                        ...formData, updated_at: new Date().toISOString()
+                    }).eq('id', id);
+                    if (error) throw error;
+                    showNotification('Cliente actualizado correctamente', 'success');
+                }
+                modal.remove();
+                if (typeof window.loadContacts === 'function') await window.loadContacts();
+                renderFilteredData();
+            } catch (err) {
+                console.error('Error:', err);
+                showNotification('Error al guardar cliente', 'error');
             }
-            
-            // Recargar vista
-            renderFilteredData();
-            
-            // Cerrar modal
-            modal.remove();
-            
-            // Mostrar éxito
-            showNotification('Cliente actualizado correctamente', 'success');
+        } else {
+            showNotification('Error: Supabase no disponible', 'error');
+        }
     });
     
     // Cerrar modal al hacer clic fuera
@@ -477,16 +505,23 @@ window.editClient = function(id) {
     });
 };
 
-window.deleteClient = function(id) {
-    const client = quotes.find(q => q.id === id);
+window.deleteClient = async function(id) {
+    const client = (window.quotes || []).find(q => q.id === id);
     if (!client) return;
-    
-    if (confirm(`¿Estás seguro de que deseas eliminar a "${client.nombre}"?\n\nEsta acción no se puede deshacer.`)) {
-        // Eliminar del localStorage garantizado
-        quotes = quotes.filter(q => q.id !== id);
-        localStorage.setItem('solar_quotes', JSON.stringify(quotes));
-        renderFilteredData();
-        showNotification('Cliente eliminado correctamente', 'success');
+
+    if (!confirm(`¿Estás seguro de que deseas eliminar a "${client.nombre}"?\n\nEsta acción no se puede deshacer.`)) return;
+
+    if (supabaseClient) {
+        try {
+            const { error } = await supabaseClient.from('contacts').delete().eq('id', id);
+            if (error) throw error;
+            showNotification('Cliente eliminado correctamente', 'success');
+            if (typeof window.loadContacts === 'function') await window.loadContacts();
+            renderFilteredData();
+        } catch (err) {
+            console.error('Error:', err);
+            showNotification('Error al eliminar cliente', 'error');
+        }
     }
 };
 
@@ -524,7 +559,7 @@ window.updateStatus = async function(id, newStatus) {
         if (error) throw error;
 
         showNotification(`Estado actualizado a: ${newStatus}`, 'success');
-        if (typeof loadContactsData === 'function') await loadContactsData();
+        if (typeof window.loadContacts === 'function') await window.loadContacts();
         renderFilteredData();
     } catch (err) {
         console.error('Error:', err);
@@ -539,13 +574,16 @@ window.updateNote = async function(id, noteText) {
     try {
         const { error } = await supabaseClient
             .from('contacts')
-            .update({ crmNote: noteText, updated_at: new Date().toISOString() })
+            .update({ crm_note: noteText, updated_at: new Date().toISOString() })
             .eq('id', id);
 
         if (error) throw error;
-        
+
+        // Actualizar localmente para no recargar toda la tabla
+        const q = (window.quotes || []).find(q => q.id === id);
+        if (q) q.crmNote = noteText;
+
         showNotification('Nota guardada', 'success');
-        if (typeof loadContactsData === 'function') await loadContactsData();
     } catch (err) {
         console.error('Error:', err);
         showNotification('Error al guardar nota', 'error');
@@ -566,7 +604,7 @@ window.deleteQuote = async function(id) {
         if (error) throw error;
 
         showNotification('Lead eliminado', 'success');
-        if (typeof loadContactsData === 'function') await loadContactsData();
+        if (typeof window.loadContacts === 'function') await window.loadContacts();
         renderFilteredData();
     } catch (err) {
         console.error('Error:', err);

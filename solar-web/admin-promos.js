@@ -55,11 +55,18 @@ function renderPromosTable(data) {
 
     data.forEach(promo => {
         const tr = document.createElement('tr');
-        
+
+        // Normalizar kit_ids (PostgreSQL puede enviar "{1,2}" o [1,2])
+        let kitIds = promo.kit_ids || [];
+        if (typeof kitIds === 'string') {
+            kitIds = kitIds.replace(/[{}]/g, '').split(',').map(s => s.trim()).filter(Boolean);
+        }
+        kitIds = kitIds.map(String);
+
         let imgThumb = promo.image;
-        if (!imgThumb && promo.kit_ids && promo.kit_ids.length > 0 && window.kits) {
-            const firstKit = window.kits.find(k => String(k.id) === String(promo.kit_ids[0]));
-            if (firstKit) imgThumb = firstKit.image;
+        if (!imgThumb && kitIds.length > 0 && window.kits) {
+            const firstKit = window.kits.find(k => String(k.id) === kitIds[0]);
+            if (firstKit) imgThumb = firstKit.image || (Number(firstKit.capacity) > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
         }
 
         const visual = imgThumb 
@@ -93,19 +100,26 @@ function showPromoModal(id = null) {
         const promo = window.promos.find(p => p.id === id);
         if (promo) {
             document.getElementById('promoModalTitle').textContent = 'Editar Promoción';
-            document.getElementById('promoTitle').value = promo.title;
-            document.getElementById('promoDesc').value = promo.description;
+            document.getElementById('promoTitle').value = promo.title || '';
+            document.getElementById('promoDesc').value = promo.description || '';
             document.getElementById('promoOrigPrice').value = promo.original_price || '';
-            document.getElementById('promoPrice').value = promo.promo_price;
-            document.getElementById('promoBadge').value = promo.badge;
-            document.getElementById('promoBadgeColor').value = promo.badge_color;
-            document.getElementById('promoIcon').value = promo.icon;
-            document.getElementById('promoFeatures').value = promo.features;
-            
+            document.getElementById('promoPrice').value = promo.promo_price || '';
+            document.getElementById('promoBadge').value = promo.badge || '';
+            document.getElementById('promoBadgeColor').value = promo.badge_color || '#f97316';
+            document.getElementById('promoIcon').value = promo.icon || '';
+            document.getElementById('promoFeatures').value = promo.features || '';
+
+            // Normalizar kit_ids: PostgreSQL puede enviar "{1,2}" o [1,2]
+            let kitIds = promo.kit_ids || [];
+            if (typeof kitIds === 'string') {
+                kitIds = kitIds.replace(/[{}]/g, '').split(',').map(s => s.trim()).filter(Boolean);
+            }
+            kitIds = kitIds.map(String); // asegurar strings para comparar con opt.value
+
             const select = document.getElementById('promoProductSelect');
-            if (select && promo.kit_ids) {
+            if (select) {
                 Array.from(select.options).forEach(opt => {
-                    opt.selected = promo.kit_ids.includes(opt.value);
+                    opt.selected = kitIds.includes(opt.value);
                 });
             }
         }
@@ -170,6 +184,12 @@ async function deletePromo(id) {
         showNotification('Error al eliminar', 'error');
     }
 }
+
+// Exponer funciones globales
+window.showPromoModal = showPromoModal;
+window.closePromoModal = closePromoModal;
+window.deletePromo = deletePromo;
+window.loadPromos = loadPromos;
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('promoForm');

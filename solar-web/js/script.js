@@ -293,11 +293,6 @@ if ('IntersectionObserver' in window) {
 const yearEl = document.getElementById('currentYear');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Cargar promociones dinámicas
-    loadPromotions();
-});
-
 // Escuchar cambios en localStorage (cuando el admin edita promociones en otra pestaña)
 window.addEventListener('storage', function(e) {
     if (e.key === 'solar_promotions' || !e.key) { // !e.key cubre nuestro custom dispatchEvent
@@ -305,92 +300,204 @@ window.addEventListener('storage', function(e) {
     }
 });
 
+// Imágenes de respaldo para promociones sin kit vinculado
+const DEFAULT_PROMO_IMAGES = [
+    'img/solar_res_1.png',
+    'img/solar_com_1.png',
+    'img/solar_res_2.png',
+    'img/solar_inst_1.png',
+    'img/panel_residencial.png',
+    'img/panel_comercial.png'
+];
+
+// Helper: obtener imagen de un kit (con fallback)
+function getKitImage(kit) {
+    if (kit.image && kit.image.trim() !== '') return kit.image;
+    return Number(kit.capacity) > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png';
+}
+
+// Normalizar kit_ids desde Supabase (puede llegar como "{1,2}" o [1,2])
+function normalizeKitIds(raw) {
+    if (!raw) return [];
+    if (typeof raw === 'string') {
+        return raw.replace(/[{}]/g, '').split(',').map(s => s.trim()).filter(Boolean).map(String);
+    }
+    if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+    return [];
+}
+
 // Función para cargar promociones en cualquier grid que la requiera
-window.loadPromotions = function() {
-    // Buscar tanto el grid de la home como el grid de la página de promociones
+window.loadPromotions = async function() {
     const homePromosGrid = document.getElementById('homePromosGrid');
     const promosGrid = document.getElementById('promosGrid');
-    
-    // Si no existe ninguno, salir
+
     if (!homePromosGrid && !promosGrid) return;
 
-    let promos = JSON.parse(localStorage.getItem('solar_promotions')) || [];
+    const loadingHTML = '<p style="text-align:center; width:100%; color:var(--gray-400); padding: 3rem;">Cargando promociones...</p>';
+    if (homePromosGrid) homePromosGrid.innerHTML = loadingHTML;
+    if (promosGrid) promosGrid.innerHTML = loadingHTML;
 
-    if (promos.length === 0) {
-        // Fallback promos just in case
-        promos = [
-            {
-                id: 1,
-                title: "Kit Residencial Básico",
-                description: "Perfecto para hogares pequeños. Reduce hasta un 60% tu recibo bimestral.",
-                originalPrice: "$65,000 MXN",
-                promoPrice: "$54,999 MXN",
-                badge: "¡Más Vendido!",
-                badgeColor: "#ef4444",
-                icon: "🏷️",
-                features: "4 Paneles de 550W, Inversor de cadena, Instalación estándar incluida, Trámite ante CFE gratis"
-            },
-            {
-                id: 2,
-                title: "Kit Residencial Plus",
-                description: "Ideal para hogares con alto consumo o aires acondicionados.",
-                originalPrice: "$110,000 MXN",
-                promoPrice: "$92,500 MXN",
-                badge: "Premium",
-                badgeColor: "#10b981",
-                icon: "🔋",
-                features: "8 Paneles de 550W, Microinversores, Monitoreo por panel individual, Mantenimiento gratis 1er año"
-            },
-            {
-                id: 3,
-                title: "Meses Sin Intereses",
-                description: "Financia tu sistema solar pagando cómodas mensualidades con tarjetas participantes.",
-                originalPrice: "",
-                promoPrice: "Hasta 12 MSI",
-                badge: "Facilidades",
-                badgeColor: "#3b82f6",
-                icon: "💳",
-                features: "Aplica en todos los paquetes, Aprobación inmediata, Sin enganche requerido, Tarjetas Visa, Mastercard y AMEX"
+    let promos = [];
+    let kitsMap = {}; // id (string) → kit object
+
+    // 1. Cargar desde Supabase directamente
+    const client = window.supabaseClient;
+    if (client) {
+        try {
+            const [promosRes, kitsRes] = await Promise.all([
+                client.from('promotions').select('*').order('created_at', { ascending: false }),
+                client.from('kits').select('id, name, capacity, image, status')
+            ]);
+
+            if (!promosRes.error && Array.isArray(promosRes.data)) {
+                promos = promosRes.data;
+                console.log(`✅ ${promos.length} promociones desde Supabase`);
+            } else if (promosRes.error) {
+                console.warn('⚠️ Error promotions Supabase:', promosRes.error.message);
             }
-        ];
-        localStorage.setItem('solar_promotions', JSON.stringify(promos));
+
+            if (!kitsRes.error && Array.isArray(kitsRes.data)) {
+                kitsRes.data.forEach(k => { kitsMap[String(k.id)] = k; });
+                console.log(`✅ ${kitsRes.data.length} kits cargados`);
+            } else if (kitsRes.error) {
+                console.warn('⚠️ Error kits Supabase:', kitsRes.error.message);
+            }
+        } catch (err) {
+            console.warn('⚠️ Supabase no disponible:', err);
+        }
     }
 
-    // Función auxiliar para renderizar tarjetas en un contenedor específico
+    // 2. Fallback a /api/ si Supabase no devolvió datos
+    if (promos.length === 0) {
+        try {
+            const [promosRes, kitsRes] = await Promise.all([
+                fetch('/api/promotions'),
+                fetch('/api/kits')
+            ]);
+            if (promosRes.ok) promos = await promosRes.json();
+            if (kitsRes.ok) {
+                const kitsArr = await kitsRes.json();
+                kitsArr.forEach(k => { kitsMap[String(k.id)] = k; });
+            }
+            if (promos.length > 0) console.log(`✅ ${promos.length} promociones desde /api`);
+        } catch (err) {
+            console.warn('⚠️ API no disponible:', err);
+        }
+    }
+
+    // 3. Fallback a localStorage
+    if (promos.length === 0) {
+        const stored = JSON.parse(localStorage.getItem('solar_promotions') || '[]');
+        if (stored.length > 0) {
+            promos = stored.map(p => ({
+                id: p.id,
+                title: p.title,
+                description: p.description || '',
+                original_price: p.originalPrice || p.original_price || '',
+                promo_price: p.promoPrice || p.promo_price || '',
+                badge: p.badge || 'OFERTA',
+                badge_color: p.badgeColor || p.badge_color || '#f97316',
+                icon: p.icon || '🏷️',
+                features: p.features || '',
+                kit_ids: p.kitId ? [String(p.kitId)] : normalizeKitIds(p.kit_ids)
+            }));
+            console.log(`📦 ${promos.length} promociones desde localStorage`);
+        }
+    }
+
+    if (promos.length === 0) {
+        const emptyHTML = '<p style="text-align:center; width:100%; color:var(--gray-400); padding: 3rem;">No hay promociones activas en este momento.</p>';
+        if (homePromosGrid) homePromosGrid.innerHTML = emptyHTML;
+        if (promosGrid) promosGrid.innerHTML = emptyHTML;
+        return;
+    }
+
+    // Renderizar tarjetas
     const renderCards = (container) => {
         if (!container) return;
         container.innerHTML = '';
-        
-        promos.forEach(promo => {
-            const featuresList = promo.features.split(',').map(f => `<li>${f.trim()}</li>`).join('');
-            const origPriceHtml = promo.originalPrice ? `<span style="text-decoration: line-through; color: var(--gray-400); font-size: 0.9rem;">${promo.originalPrice}</span>` : '';
-            
+
+        promos.forEach((promo, index) => {
+            const kitIds = normalizeKitIds(promo.kit_ids);
+            const color = promo.badge_color || '#f97316';
+
+            // --- Construir bloque de imagen ---
+            let imageHTML = '';
+
+            if (promo.image && promo.image.trim() !== '') {
+                // Imagen propia de la promo
+                imageHTML = `<div style="height:210px; border-radius:12px; overflow:hidden; margin-bottom:1rem;">
+                    <img src="${promo.image}" alt="${promo.title}" loading="lazy"
+                        style="width:100%; height:100%; object-fit:cover;">
+                </div>`;
+
+            } else if (kitIds.length > 0 && Object.keys(kitsMap).length > 0) {
+                // Imágenes de los kits vinculados
+                const linkedKits = kitIds.map(id => kitsMap[id]).filter(Boolean);
+
+                if (linkedKits.length > 0) {
+                    const cols = linkedKits.slice(0, 3).map(kit => {
+                        const src = getKitImage(kit);
+                        return `<div style="flex:1; min-width:0;">
+                            <img src="${src}" alt="${kit.name || 'Kit Solar'}" loading="lazy"
+                                style="width:100%; height:210px; object-fit:cover; display:block;">
+                        </div>`;
+                    });
+                    const gap = cols.length > 1 ? 'gap:3px;' : '';
+                    imageHTML = `<div style="display:flex; ${gap} border-radius:12px; overflow:hidden; margin-bottom:1rem;">
+                        ${cols.join('')}
+                    </div>`;
+                }
+            }
+
+            // Fallback: imagen genérica según índice + overlay con badge color
+            if (!imageHTML) {
+                const fallbackSrc = DEFAULT_PROMO_IMAGES[index % DEFAULT_PROMO_IMAGES.length];
+                imageHTML = `<div style="height:210px; border-radius:12px; overflow:hidden; margin-bottom:1rem; position:relative;">
+                    <img src="${fallbackSrc}" alt="${promo.title}" loading="lazy"
+                        style="width:100%; height:100%; object-fit:cover; display:block;">
+                    <div style="position:absolute; inset:0; background:${color}15;"></div>
+                </div>`;
+            }
+
+            const featuresHTML = promo.features
+                ? promo.features.split(',').map(f => `<li>${f.trim()}</li>`).join('')
+                : '';
+
+            const origPriceHtml = promo.original_price
+                ? `<span style="text-decoration:line-through; color:var(--gray-400); font-size:0.9rem; margin-right:0.5rem;">${promo.original_price}</span>`
+                : '';
+
+            const ctaHref = kitIds.length > 0
+                ? `productos.html?kit=${encodeURIComponent(kitIds[0])}`
+                : `contacto.html?promo=${encodeURIComponent(promo.id)}`;
+
             const card = document.createElement('div');
-            card.className = 'service-card reveal visible'; // Agregamos visible para que se muestren de inmediato
-            card.style.border = `2px solid ${promo.badgeColor}`;
+            card.className = 'service-card reveal visible';
+            card.style.cssText = `border:2px solid ${color}; overflow:hidden; padding:0;`;
             card.innerHTML = `
-                <div class="service-img-wrapper" style="height: 180px; display: flex; align-items: center; justify-content: center; background: ${promo.badgeColor}15;">
-                    <div style="font-size: 4rem;">${promo.icon}</div>
-                    <span class="service-tag-badge" style="background: ${promo.badgeColor};">${promo.badge}</span>
-                </div>
-                <div class="service-body">
-                    <h3>${promo.title}</h3>
-                    <div style="margin: 1rem 0;">
-                        ${origPriceHtml}
-                        <span style="color: var(--primary); font-size: 1.8rem; font-weight: 700; display: block;">${promo.promoPrice}</span>
+                ${imageHTML}
+                <div style="padding: 1.25rem 1.25rem 1.5rem;">
+                    <div style="text-align:center; margin-bottom:0.8rem;">
+                        <span style="background:${color}; color:white; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.75rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;">${promo.badge || 'OFERTA'}</span>
                     </div>
-                    <p>${promo.description}</p>
-                    <ul class="service-features">
-                    ${featuresList}
-                </ul>
-                <a href="${promo.kitId ? `productos.html?kit=${promo.kitId}` : `contacto.html?promo=${promo.id}`}" class="btn-primary" style="width: 100%; text-align: center; display: block; margin-top: 1rem; box-sizing: border-box; background-color: ${promo.badgeColor}; border-color: ${promo.badgeColor};">Aprovechar Oferta</a>
-            </div>
-        `;
+                    <h3 style="margin-bottom:0.4rem;">${promo.title}</h3>
+                    <p style="color:var(--gray-400); margin-bottom:0.8rem; font-size:0.88rem; line-height:1.5;">${promo.description || ''}</p>
+                    <div style="margin:0.8rem 0; background:rgba(0,0,0,0.2); padding:0.9rem; border-radius:8px; text-align:center;">
+                        ${origPriceHtml}
+                        <span style="color:${color}; font-size:1.75rem; font-weight:700; display:block; margin-top:0.2rem;">${promo.promo_price}</span>
+                    </div>
+                    ${featuresHTML ? `<ul class="service-features" style="margin-bottom:1rem;">${featuresHTML}</ul>` : ''}
+                    <a href="${ctaHref}" class="btn-primary" style="width:100%; text-align:center; display:block; box-sizing:border-box; background-color:${color}; border-color:${color};">Aprovechar Oferta</a>
+                </div>
+            `;
             container.appendChild(card);
         });
     };
 
-    // Renderizar en todos los contenedores que existan
     renderCards(homePromosGrid);
     renderCards(promosGrid);
 };
+
+// Llamar al cargar la página (el script está al final del body, DOM ya listo)
+loadPromotions();

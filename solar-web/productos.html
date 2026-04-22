@@ -316,64 +316,20 @@
         aria-label="WhatsApp">💬</a>
 
     <script src="js/script.js?v=1.0.0"></script>
-    
+
     <script>
-        // Cargar kits desde Supabase (REAL DATA)
-        async function loadKitsFromSupabase() {
-            const kitsContainer = document.getElementById('kitsContainer');
-            if (!kitsContainer) return;
-            
-            const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
-            
-            if (!client) {
-                console.warn('⚠️ Supabase Client no está listo todavía. Reintentando en 500ms...');
-                setTimeout(loadKitsFromSupabase, 500);
-                return;
-            }
-
-            try {
-                const { data, error } = await client
-                    .from('kits')
-                    .select('*')
-                    .order('name', { ascending: true });
-
-                if (error) throw error;
-                
-                const activos = data ? data.filter(k => k.status !== 'Oculto') : [];
-
-                if (activos.length === 0) {
-                    kitsContainer.innerHTML = `
-                        <div style="width:100%;text-align:center;padding:4rem 2rem;color:var(--gray-400);">
-                            <div style="font-size:3rem;margin-bottom:1rem;">☀️</div>
-                            <h3 style="color:var(--gray-300);">Próximamente</h3>
-                            <p>Estamos preparando nuestro catálogo de kits. Contáctanos para una cotización personalizada.</p>
-                            <a href="contacto.html" class="btn-primary" style="display:inline-block;margin-top:1rem;">Solicitar cotización</a>
-                        </div>`;
-                    return;
-                }
-
-                kitsContainer.innerHTML = '';
-                activos.forEach(kit => {
-                    kitsContainer.appendChild(createKitCard(kit));
-                });
-
-                const tab = document.getElementById('tabTodos');
-                if (tab) tab.textContent = `Kits Solares (${activos.length})`;
-            } catch (err) {
-                console.error('Error al cargar kits:', err);
-            }
-        }
-        
         // Crear tarjeta de kit
         function createKitCard(kit) {
             const card = document.createElement('div');
             card.className = 'product-card reveal visible';
             card.setAttribute('data-category', 'kit');
             card.style.cssText = 'display: flex; flex-direction: column; background: var(--secondary-mid); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; height: 100%;';
-            
-            let kitImage = kit.image || (kit.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
+
+            // capacity puede venir en kW (3) o en watts (3000)
+            const capacityKw = kit.capacity > 500 ? (kit.capacity / 1000) : kit.capacity;
+            let kitImage = kit.image || kit.image_url || (capacityKw > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
             const featuresList = kit.features ? kit.features.split(',').map(f => `<li>${f.trim()}</li>`).join('') : '';
-            
+
             card.innerHTML = `
                 <div class="product-img-wrapper" style="position: relative; height: 200px; overflow: hidden;">
                     <img src="${kitImage}" alt="${kit.name}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;" />
@@ -383,11 +339,11 @@
                 <div class="product-body" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1;">
                     <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">${kit.name}</h3>
                     <p class="product-desc" style="color: var(--gray-400); font-size: 0.9rem; margin-bottom: 1rem; flex: 1;">${kit.description}</p>
-                    
+
                     <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                             <span style="color: var(--gray-400); font-size: 0.85rem;">Capacidad:</span>
-                            <span style="font-weight: 600;">${kit.capacity} kW</span>
+                            <span style="font-weight: 600;">${capacityKw} kW</span>
                         </div>
                         <ul style="margin: 0; padding-left: 1.2rem; color: var(--gray-300); font-size: 0.85rem; line-height: 1.6;">
                             ${featuresList}
@@ -400,17 +356,48 @@
                     </div>
                 </div>
             `;
-            
+
             return card;
         }
-        
-        // Cargar kits cuando el DOM esté listo
-        document.addEventListener('DOMContentLoaded', loadKitsFromSupabase);
-        
-        // Escuchar cambios en localStorage para actualizar en tiempo real
-        window.addEventListener('storage', function(e) {
-            if (e.key === 'solar_kits' || !e.key) {
-                loadKitsFromLocalStorage();
+
+        // Cargar kits desde el API del backend
+        document.addEventListener('DOMContentLoaded', async function() {
+            const kitsContainer = document.getElementById('kitsContainer');
+            if (!kitsContainer) return;
+
+            kitsContainer.innerHTML = '<p style="text-align:center;width:100%;color:var(--gray-400);padding:4rem;">Cargando productos...</p>';
+
+            try {
+                const res = await fetch('/api/kits');
+                if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
+                const data = await res.json();
+
+                // Compatibilidad: tabla usa is_active (bool) o status (texto)
+                const activos = data.filter(k => {
+                    if (k.is_active === false) return false;
+                    if (k.status === 'Oculto') return false;
+                    return true;
+                });
+
+                if (activos.length === 0) {
+                    kitsContainer.innerHTML = `
+                        <div style="width:100%;text-align:center;padding:4rem 2rem;color:var(--gray-400);">
+                            <div style="font-size:3rem;margin-bottom:1rem;">☀️</div>
+                            <h3 style="color:var(--gray-300);">Próximamente</h3>
+                            <p>Estamos preparando nuestro catálogo. Contáctanos para una cotización personalizada.</p>
+                            <a href="contacto.html" class="btn-primary" style="display:inline-block;margin-top:1rem;">Solicitar cotización</a>
+                        </div>`;
+                    return;
+                }
+
+                kitsContainer.innerHTML = '';
+                activos.sort((a, b) => a.name.localeCompare(b.name));
+                activos.forEach(kit => kitsContainer.appendChild(createKitCard(kit)));
+
+                console.log(`✅ ${activos.length} kits cargados desde /api/kits`);
+            } catch (err) {
+                console.error('Error al cargar kits:', err);
+                kitsContainer.innerHTML = '<p style="text-align:center;width:100%;color:#ef4444;padding:4rem;">Error al cargar los productos. Intenta recargar la página.</p>';
             }
         });
     </script>

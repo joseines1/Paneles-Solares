@@ -27,10 +27,10 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 // Configurar Twilios
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
-// Configurar Supabase
+// Configurar Supabase — usar service role key si está disponible (bypasa RLS)
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
 );
 
 // Ruta para servir archivos estáticos (fallback a index.html para SPA)

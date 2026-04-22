@@ -1,49 +1,13 @@
 // admin-kits.js
-// Logic for managing Products/Kits in the admin panel
-// Usando Supabase como base de datos
+// Manejo de Productos individuales y Kits solares (con productos incluidos)
 
-let kits = [];
-
-let editingKitId = null;
+let kits = [];           // todos los registros de la tabla kits
+let editingKitId = null; // ID del kit/producto en edición
+let editingProductId = null;
 let currentKitImageBase64 = null;
+let currentProductImageBase64 = null;
 
-function setupImageListeners() {
-    const fileInput = document.getElementById('kitImageFile');
-    const urlInput = document.getElementById('kitImageURL');
-    const preview = document.getElementById('kitImagePreview');
-
-    if (fileInput) {
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    currentKitImageBase64 = evt.target.result;
-                    if (preview) {
-                        preview.src = currentKitImageBase64;
-                        preview.style.display = 'block';
-                    }
-                };
-                reader.readAsDataURL(file);
-                if (urlInput) urlInput.value = ''; // Borra URL si selecciona archivo
-            }
-        });
-    }
-
-    if (urlInput) {
-        urlInput.addEventListener('input', function() {
-            if (this.value.trim() !== '') {
-                currentKitImageBase64 = null; 
-                if (preview) {
-                    preview.src = this.value;
-                    preview.style.display = 'block';
-                }
-            } else if (!currentKitImageBase64) {
-                if (preview) preview.style.display = 'none';
-            }
-        });
-    }
-}
+// ─── Carga desde Supabase ────────────────────────────────────────────────────
 
 function loadKits() {
     if (!supabaseClient) {
@@ -64,231 +28,344 @@ function loadKits() {
             } else {
                 kits = data || [];
             }
+            window.kits = kits;
             renderKits();
         });
 }
 
+// ─── Render de tablas ────────────────────────────────────────────────────────
+
 function renderKits() {
     const tbody = document.getElementById('kitsTableBody');
     if (!tbody) return;
-
-    tbody.innerHTML = '';
 
     if (kits.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray-400);">No hay productos registrados.</td></tr>';
         return;
     }
 
-    kits.forEach(kit => {
-        const tr = document.createElement('tr');
-        
-        let statusBadge = 'bg-gray-500';
-        if (kit.status === 'Activo') statusBadge = 'bg-green-500';
-        if (kit.status === 'Agotado') statusBadge = 'bg-red-500';
-        if (kit.status === 'Oculto') statusBadge = 'bg-gray-600';
+    tbody.innerHTML = kits.map(item => {
+        const img = item.image || (item.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
+        const isKit = item.type === 'kit';
+        const badge = isKit
+            ? '<span style="background:rgba(249,115,22,0.2);color:#f97316;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:6px;">KIT</span>'
+            : '<span style="background:rgba(59,130,246,0.2);color:#3b82f6;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:6px;">PRODUCTO</span>';
+        const editFn = isKit ? `showKitBundleModal(${item.id})` : `showProductModal(${item.id})`;
 
-        let imgThumb = kit.image ? kit.image : (kit.capacity > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
-        
-        tr.innerHTML = `
+        return `
+        <tr>
             <td>
-                <div style="display:flex; align-items:center; gap:0.75rem;">
-                    <img src="${imgThumb}" alt="thumb" style="width:40px; height:40px; border-radius:6px; object-fit:cover; border:1px solid rgba(255,255,255,0.1);" />
-                    <strong>${kit.name}</strong>
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <img src="${img}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);">
+                    <span><strong>${item.name}</strong>${badge}</span>
                 </div>
             </td>
-            <td>${kit.capacity} kW</td>
-            <td>$${Number(kit.price).toLocaleString('es-MX')}</td>
-            <td>${kit.stock}</td>
-            <td><span class="status-badge" style="background:var(--primary); color:white; font-size:0.8rem; padding:0.2rem 0.5rem;">${kit.status}</span></td>
+            <td>${item.capacity} kW</td>
+            <td>$${Number(item.price).toLocaleString('es-MX')}</td>
+            <td>${item.stock}</td>
+            <td><span style="background:var(--primary);color:white;font-size:0.8rem;padding:0.2rem 0.5rem;border-radius:4px;">${item.status || 'Activo'}</span></td>
             <td>
-                <button class="btn-action" style="color:#3b82f6; border-color:rgba(59,130,246,0.3);" onclick="showKitModal(${kit.id})">Editar</button>
-                <button class="btn-action" style="color:#ef4444; border-color:rgba(239,68,68,0.3);" onclick="deleteKit(${kit.id})">Eliminar</button>
+                <button class="btn-action" style="color:#3b82f6;border-color:rgba(59,130,246,0.3);" onclick="${editFn}">Editar</button>
+                <button class="btn-action" style="color:#ef4444;border-color:rgba(239,68,68,0.3);" onclick="deleteKit(${item.id})">Eliminar</button>
             </td>
-        `;
-        tbody.appendChild(tr);
+        </tr>`;
+    }).join('');
+}
+
+// ─── Modal: Producto individual ──────────────────────────────────────────────
+
+function showProductModal(id = null) {
+    const modal = document.getElementById('productModal');
+    if (!modal) return;
+
+    document.getElementById('productForm').reset();
+    currentProductImageBase64 = null;
+    const preview = document.getElementById('productImagePreview');
+    if (preview) { preview.style.display = 'none'; preview.src = ''; }
+
+    if (id) {
+        editingProductId = id;
+        document.getElementById('productModalTitle').textContent = '🔩 Editar Producto';
+        const p = kits.find(k => k.id === id);
+        if (p) {
+            document.getElementById('productName').value     = p.name || '';
+            document.getElementById('productCapacity').value = p.capacity || '';
+            document.getElementById('productPrice').value    = p.price || '';
+            document.getElementById('productStock').value    = p.stock || '';
+            document.getElementById('productStatus').value   = p.status || 'Activo';
+            document.getElementById('productDesc').value     = p.description || '';
+            document.getElementById('productFeatures').value = p.features || '';
+            if (p.image) {
+                if (p.image.startsWith('data:image')) {
+                    currentProductImageBase64 = p.image;
+                } else {
+                    document.getElementById('productImageURL').value = p.image;
+                }
+                if (preview) { preview.src = p.image; preview.style.display = 'block'; }
+            }
+        }
+    } else {
+        editingProductId = null;
+        document.getElementById('productModalTitle').textContent = '🔩 Crear Producto';
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeProductModal() {
+    const modal = document.getElementById('productModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function saveProduct(event) {
+    event.preventDefault();
+    if (!supabaseClient) { showNotification('Error: Supabase no disponible', 'error'); return; }
+
+    const urlVal = document.getElementById('productImageURL').value.trim();
+    const data = {
+        name:        document.getElementById('productName').value.trim(),
+        capacity:    parseFloat(document.getElementById('productCapacity').value),
+        price:       parseFloat(document.getElementById('productPrice').value),
+        stock:       parseInt(document.getElementById('productStock').value),
+        status:      document.getElementById('productStatus').value,
+        description: document.getElementById('productDesc').value.trim(),
+        features:    document.getElementById('productFeatures').value.trim(),
+        image:       currentProductImageBase64 || urlVal,
+        type:        'producto',
+        category:    'Residencial',
+        panels:      1,
+        inverter:    parseFloat(document.getElementById('productCapacity').value)
+    };
+
+    const op = editingProductId
+        ? supabaseClient.from('kits').update(data).eq('id', editingProductId)
+        : supabaseClient.from('kits').insert([{ ...data, created_at: new Date().toISOString() }]);
+
+    op.then(({ error }) => {
+        if (error) {
+            showNotification('Error guardando producto', 'error');
+            console.error(error);
+        } else {
+            showNotification(editingProductId ? 'Producto actualizado' : 'Producto creado', 'success');
+            loadKits();
+            closeProductModal();
+        }
     });
 }
 
-function showKitModal(id = null) {
+// ─── Modal: Kit solar (con checklist de productos) ───────────────────────────
+
+function showKitBundleModal(id = null) {
     const modal = document.getElementById('kitModal');
     if (!modal) return;
 
-    const form = document.getElementById('kitForm');
-    form.reset();
+    document.getElementById('kitForm').reset();
+    currentKitImageBase64 = null;
+    const preview = document.getElementById('kitImagePreview');
+    if (preview) { preview.style.display = 'none'; preview.src = ''; }
+
+    // Poblar checklist con productos individuales
+    const checklist = document.getElementById('kitProductsChecklist');
+    const products = kits.filter(k => k.type !== 'kit');
+    let selectedIds = [];
 
     if (id) {
         editingKitId = id;
-        document.getElementById('kitModalTitle').textContent = 'Editar Producto';
+        document.getElementById('kitModalTitle').textContent = '📦 Editar Kit Solar';
         const kit = kits.find(k => k.id === id);
         if (kit) {
-            document.getElementById('kitName').value = kit.name;
-            document.getElementById('kitCapacity').value = kit.capacity;
-            document.getElementById('kitPrice').value = kit.price;
-            document.getElementById('kitStock').value = kit.stock;
-            document.getElementById('kitStatus').value = kit.status;
-            document.getElementById('kitDesc').value = kit.description;
-            document.getElementById('kitFeatures').value = kit.features;
-            
-            if (document.getElementById('kitImageURL')) {
-                if (kit.image) {
-                    if (kit.image.startsWith('data:image')) {
-                        currentKitImageBase64 = kit.image;
-                        document.getElementById('kitImageURL').value = '';
-                    } else {
-                        currentKitImageBase64 = null;
-                        document.getElementById('kitImageURL').value = kit.image;
-                    }
-                    if (document.getElementById('kitImagePreview')) {
-                        document.getElementById('kitImagePreview').src = kit.image;
-                        document.getElementById('kitImagePreview').style.display = 'block';
-                    }
+            document.getElementById('kitName').value     = kit.name || '';
+            document.getElementById('kitCapacity').value = kit.capacity || '';
+            document.getElementById('kitPrice').value    = kit.price || '';
+            document.getElementById('kitStock').value    = kit.stock || '';
+            document.getElementById('kitStatus').value   = kit.status || 'Activo';
+            document.getElementById('kitDesc').value     = kit.description || '';
+            document.getElementById('kitFeatures').value = kit.features || '';
+            selectedIds = Array.isArray(kit.product_ids) ? kit.product_ids : [];
+            if (kit.image) {
+                if (kit.image.startsWith('data:image')) {
+                    currentKitImageBase64 = kit.image;
                 } else {
-                    currentKitImageBase64 = null;
-                    document.getElementById('kitImageURL').value = '';
-                    if (document.getElementById('kitImagePreview')) {
-                        document.getElementById('kitImagePreview').style.display = 'none';
-                        document.getElementById('kitImagePreview').src = '';
-                    }
+                    document.getElementById('kitImageURL').value = kit.image;
                 }
+                if (preview) { preview.src = kit.image; preview.style.display = 'block'; }
             }
         }
     } else {
         editingKitId = null;
-        document.getElementById('kitModalTitle').textContent = 'Crear Producto';
-        currentKitImageBase64 = null;
-        if (document.getElementById('kitImageURL')) document.getElementById('kitImageURL').value = '';
-        if (document.getElementById('kitImageFile')) document.getElementById('kitImageFile').value = '';
-        if (document.getElementById('kitImagePreview')) {
-            document.getElementById('kitImagePreview').style.display = 'none';
-            document.getElementById('kitImagePreview').src = '';
-        }
+        document.getElementById('kitModalTitle').textContent = '📦 Crear Kit Solar';
     }
 
-    modal.classList.add('active');
+    if (products.length === 0) {
+        checklist.innerHTML = '<span style="color:var(--gray-400);font-size:0.85rem;">No hay productos disponibles. Crea productos primero.</span>';
+    } else {
+        checklist.innerHTML = products.map(p => `
+            <label style="display:flex;align-items:center;gap:0.6rem;padding:0.5rem;border-radius:6px;cursor:pointer;transition:background 0.2s;"
+                   onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+                   onmouseout="this.style.background='transparent'">
+                <input type="checkbox" value="${p.id}" ${selectedIds.includes(p.id) ? 'checked' : ''}
+                    style="width:16px;height:16px;accent-color:#f97316;cursor:pointer;">
+                <span style="color:var(--gray-200);font-size:0.9rem;">${p.name}</span>
+                <span style="color:var(--gray-400);font-size:0.8rem;margin-left:auto;">$${Number(p.price).toLocaleString('es-MX')} · ${p.capacity} kW</span>
+            </label>
+        `).join('');
+    }
+
+    modal.style.display = 'flex';
 }
 
 function closeKitModal() {
     const modal = document.getElementById('kitModal');
-    if (modal) modal.classList.remove('active');
+    if (modal) modal.style.display = 'none';
 }
 
 function saveKit(event) {
     event.preventDefault();
+    if (!supabaseClient) { showNotification('Error: Supabase no disponible', 'error'); return; }
 
-    if (!supabaseClient) {
-        showNotification('Error: Supabase no disponible', 'error');
-        return;
-    }
+    // Leer productos seleccionados
+    const checklist = document.getElementById('kitProductsChecklist');
+    const checked = checklist ? Array.from(checklist.querySelectorAll('input[type=checkbox]:checked')).map(cb => parseInt(cb.value)) : [];
 
-    const name = document.getElementById('kitName').value.trim();
+    const urlVal = document.getElementById('kitImageURL').value.trim();
     const capacity = parseFloat(document.getElementById('kitCapacity').value);
-    const price = parseFloat(document.getElementById('kitPrice').value);
-    const stock = parseInt(document.getElementById('kitStock').value);
-    const status = document.getElementById('kitStatus').value;
-    const description = document.getElementById('kitDesc').value.trim();
-    const features = document.getElementById('kitFeatures').value.trim();
-    
-    const urlValue = document.getElementById('kitImageURL') ? document.getElementById('kitImageURL').value.trim() : '';
-    const image = currentKitImageBase64 ? currentKitImageBase64 : urlValue;
-
-    const kitData = {
-        name,
+    const data = {
+        name:        document.getElementById('kitName').value.trim(),
         capacity,
-        price,
-        stock,
-        status,
-        description,
-        features,
-        image,
-        category: 'Residencial',
-        panels: Math.round(capacity / 0.55),
-        inverter: capacity
+        price:       parseFloat(document.getElementById('kitPrice').value),
+        stock:       parseInt(document.getElementById('kitStock').value),
+        status:      document.getElementById('kitStatus').value,
+        description: document.getElementById('kitDesc').value.trim(),
+        features:    document.getElementById('kitFeatures').value.trim(),
+        image:       currentKitImageBase64 || urlVal,
+        type:        'kit',
+        product_ids: checked,
+        category:    'Residencial',
+        panels:      Math.round(capacity / 0.55),
+        inverter:    capacity
     };
 
-    if (editingKitId) {
-        supabaseClient
-            .from('kits')
-            .update(kitData)
-            .eq('id', editingKitId)
-            .then(({ error }) => {
-                if (error) {
-                    showNotification('Error actualizando producto', 'error');
-                    console.error('Error:', error);
-                } else {
-                    showNotification('Producto actualizado correctamente', 'success');
-                    loadKits();
-                    closeKitModal();
-                }
-            });
-    } else {
-        supabaseClient
-            .from('kits')
-            .insert([{ ...kitData, created_at: new Date().toISOString() }])
-            .then(({ error }) => {
-                if (error) {
-                    showNotification('Error creando producto', 'error');
-                    console.error('Error:', error);
-                } else {
-                    showNotification('Producto creado correctamente', 'success');
-                    loadKits();
-                    closeKitModal();
-                }
-            });
-    }
-}
+    const op = editingKitId
+        ? supabaseClient.from('kits').update(data).eq('id', editingKitId)
+        : supabaseClient.from('kits').insert([{ ...data, created_at: new Date().toISOString() }]);
 
-function deleteKit(id) {
-    if (!supabaseClient) {
-        showNotification('Error: Supabase no disponible', 'error');
-        return;
-    }
-
-    if (confirm("¿Estás seguro de eliminar este producto?")) {
-        supabaseClient
-            .from('kits')
-            .delete()
-            .eq('id', id)
-            .then(({ error }) => {
-                if (error) {
-                    showNotification('Error eliminando producto', 'error');
-                    console.error('Error:', error);
-                } else {
-                    showNotification('Producto eliminado correctamente', 'success');
-                    loadKits();
-                }
-            });
-    }
-}
-
-// Update promotion logic to allow selecting a product
-function populateProductSelectForPromos() {
-    const select = document.getElementById('promoProductSelect');
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">-- Seleccionar un Producto --</option>';
-    kits.forEach(kit => {
-        const option = document.createElement('option');
-        option.value = kit.id;
-        option.textContent = `${kit.name} ($${Number(kit.price).toLocaleString('es-MX')})`;
-        select.appendChild(option);
+    op.then(({ error }) => {
+        if (error) {
+            showNotification('Error guardando kit', 'error');
+            console.error(error);
+        } else {
+            showNotification(editingKitId ? 'Kit actualizado' : 'Kit creado', 'success');
+            loadKits();
+            closeKitModal();
+        }
     });
 }
 
+// ─── Eliminar (producto o kit) ────────────────────────────────────────────────
+
+function deleteKit(id) {
+    if (!supabaseClient) { showNotification('Error: Supabase no disponible', 'error'); return; }
+    if (!confirm('¿Estás seguro de eliminar este elemento?')) return;
+
+    supabaseClient.from('kits').delete().eq('id', id).then(({ error }) => {
+        if (error) {
+            showNotification('Error eliminando', 'error');
+            console.error(error);
+        } else {
+            showNotification('Eliminado correctamente', 'success');
+            loadKits();
+        }
+    });
+}
+
+// ─── Imagen listeners ─────────────────────────────────────────────────────────
+
+function setupImageListeners() {
+    // Producto
+    const pFile = document.getElementById('productImageFile');
+    const pUrl  = document.getElementById('productImageURL');
+    const pPrev = document.getElementById('productImagePreview');
+    if (pFile) {
+        pFile.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = evt => {
+                currentProductImageBase64 = evt.target.result;
+                if (pPrev) { pPrev.src = currentProductImageBase64; pPrev.style.display = 'block'; }
+            };
+            reader.readAsDataURL(file);
+            if (pUrl) pUrl.value = '';
+        });
+    }
+    if (pUrl) {
+        pUrl.addEventListener('input', function() {
+            if (this.value.trim()) {
+                currentProductImageBase64 = null;
+                if (pPrev) { pPrev.src = this.value; pPrev.style.display = 'block'; }
+            }
+        });
+    }
+
+    // Kit
+    const kFile = document.getElementById('kitImageFile');
+    const kUrl  = document.getElementById('kitImageURL');
+    const kPrev = document.getElementById('kitImagePreview');
+    if (kFile) {
+        kFile.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = evt => {
+                currentKitImageBase64 = evt.target.result;
+                if (kPrev) { kPrev.src = currentKitImageBase64; kPrev.style.display = 'block'; }
+            };
+            reader.readAsDataURL(file);
+            if (kUrl) kUrl.value = '';
+        });
+    }
+    if (kUrl) {
+        kUrl.addEventListener('input', function() {
+            if (this.value.trim()) {
+                currentKitImageBase64 = null;
+                if (kPrev) { kPrev.src = this.value; kPrev.style.display = 'block'; }
+            }
+        });
+    }
+}
+
+// ─── Para selector de productos en Promociones ───────────────────────────────
+
+function populateProductSelectForPromos() {
+    const select = document.getElementById('promoProductSelect');
+    if (!select) return;
+    const all = kits.filter(k => k.status !== 'Oculto');
+    select.innerHTML = '';
+    all.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k.id;
+        opt.textContent = `${k.name} ($${Number(k.price).toLocaleString('es-MX')})`;
+        select.appendChild(opt);
+    });
+}
+
+// ─── Exponer funciones globales ───────────────────────────────────────────────
+
+window.showProductModal  = showProductModal;
+window.closeProductModal = closeProductModal;
+window.showKitModal      = showKitBundleModal;   // alias para compatibilidad
+window.showKitBundleModal = showKitBundleModal;
+window.closeKitModal     = closeKitModal;
+window.deleteKit         = deleteKit;
+window.loadKits          = loadKits;
+window.populateProductSelectForPromos = populateProductSelectForPromos;
+
 document.addEventListener('DOMContentLoaded', () => {
+    const productForm = document.getElementById('productForm');
+    if (productForm) productForm.addEventListener('submit', saveProduct);
+
     const kitForm = document.getElementById('kitForm');
-    if (kitForm) {
-        kitForm.addEventListener('submit', saveKit);
-    }
-    
+    if (kitForm) kitForm.addEventListener('submit', saveKit);
+
     setupImageListeners();
-    
-    // Si estamos en la página del admin, sobreescribimos la función de mostrar el modal de promo
-    // para cargar los productos en el select si existe.
-    if (typeof window.showPromoModal !== 'undefined') {
-        const originalShowPromoModal = window.showPromoModal;
-        window.showPromoModal = function(id = null) {
-            populateProductSelectForPromos();
-            originalShowPromoModal(id);
-        };
-    }
 });
