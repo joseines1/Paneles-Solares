@@ -1,0 +1,221 @@
+/* Estilos para modales del panel de administración */
+
+/* Animaciones para notificaciones */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Modal overlay */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--secondary-mid);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    padding: 2rem;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--white);
+}
+
+/* Layout grids for forms */
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+
+.admin-form-group {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-input, .admin-select, .admin-textarea {
+    width: 100%;
+}
+
+/* Estilos para formulario en modal */
+.modal-overlay form {
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-overlay label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: var(--gray-300);
+}
+
+.modal-overlay input,
+.modal-overlay select,
+.modal-overlay textarea {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.modal-overlay input:focus,
+.modal-overlay select:focus,
+.modal-overlay textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.modal-overlay textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Botones del modal */
+.modal-overlay .btn-primary,
+.modal-overlay .btn-secondary {
+    border: none;
+    border-radius: 6px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.modal-overlay .btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.modal-overlay .btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.modal-overlay .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--gray-300);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-overlay .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Notificaciones */
+.notification {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    border-left: 4px solid rgba(255, 255, 255, 0.3);
+}
+
+.notification.success {
+    border-left-color: #10b981;
+}
+
+.notification.error {
+    border-left-color: #ef4444;
+}
+
+.notification.info {
+    border-left-color: var(--primary);
+}
+
+/* Responsive para modales */
+@media (max-width: 768px) {
+    .modal-overlay > div {
+        width: 95% !important;
+        max-width: none !important;
+        margin: 1rem;
+        padding: 1.5rem !important;
+    }
+    
+    .modal-overlay h3 {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .modal-overlay .btn-primary,
+    .modal-overlay .btn-secondary {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Estados para inputs requeridos */
+.modal-overlay input:required:invalid {
+    border-color: #ef4444;
+}
+
+.modal-overlay input:required:valid {
+    border-color: #10b981;
+}

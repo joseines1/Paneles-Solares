@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Productos | SolarWeb</title>
+    <meta name="description"
+        content="Catálogo de paneles solares, inversores y baterías de almacenamiento de SolarWeb. Tecnología de primer nivel al mejor precio." />
+    <meta property="og:title" content="Productos | SolarWeb" />
+    <meta property="og:description" content="Paneles solares, inversores y baterías de alto rendimiento." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="img/panel_residencial.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Productos | SolarWeb" />
+    <meta name="twitter:description" content="Paneles solares, inversores y baterías de alto rendimiento." />
+    <link rel="canonical" href="https://paneles-solares.onrender.com/productos.html" />
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/estilos.css?v=1.0.0" />
+    <style>
+        .products-tabs {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 3rem;
+        }
+
+        .tab-btn {
+            padding: 0.6rem 1.6rem;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: transparent;
+            color: var(--gray-400);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .tab-btn:hover,
+        .tab-btn.active {
+            background: var(--primary);
+            color: var(--secondary);
+            border-color: var(--primary);
+            font-weight: 700;
+        }
+
+        .compare-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--secondary-mid);
+            border-top: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 1rem 2rem;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 500;
+            backdrop-filter: blur(20px);
+        }
+
+        .compare-bar.show {
+            display: flex;
+        }
+
+        .compare-bar p {
+            font-size: 0.9rem;
+            color: var(--gray-200);
+        }
+
+        .compare-bar p span {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .compare-clear {
+            background: none;
+            border: none;
+            color: var(--gray-400);
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .compare-clear:hover {
+            color: var(--primary);
+        }
+
+        .product-check {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Responsive para productos */
+        #kitsContainer {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            width: 100%;
+        }
+
+        @media (max-width: 1024px) {
+            #kitsContainer {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            #kitsContainer {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <style>
+        .product-check {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: transparent;
+            z-index: 2;
+        }
+
+        .product-card.selected .product-check {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--secondary);
+        }
+
+        .ribbon {
+            position: absolute;
+            top: 14px;
+            left: -3px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.25rem 0.8rem;
+            border-radius: 0 4px 4px 0;
+            z-index: 3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .ribbon::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -4px;
+            border: 4px solid transparent;
+            border-top-color: #b91c1c;
+            border-right-color: #b91c1c;
+        }
+
+        .rating {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .rating .stars-s {
+            color: var(--primary);
+            font-size: 0.85rem;
+        }
+
+        .rating span {
+            color: var(--gray-400);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar scrolled" id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <div class="logo-icon">☀️</div>
+                <div class="logo-text">Solar<span>Web</span></div>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html">Inicio</a></li>
+                <li><a href="servicios.html">Servicios</a></li>
+                <li><a href="productos.html">Productos</a></li>
+                <li><a href="proyectos.html">Proyectos</a></li>
+                <li><a href="contacto.html" class="nav-cta">Cotizar Ahora</a></li>
+            </ul>
+            <button class="hamburger" id="hamburger" aria-label="Menú">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- PAGE HERO -->
+    <div class="page-hero">
+        <div class="container">
+            <div class="breadcrumb">
+                <a href="index.html">Inicio</a>
+                <span class="sep">›</span>
+                <span>Productos</span>
+            </div>
+            <h1>Nuestros <span>Productos</span></h1>
+            <p>Paneles, inversores y baterías de primera calidad. Tecnología de vanguardia con la mejor garantía del
+                mercado.</p>
+        </div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <section>
+        <div class="container">
+            <!-- Tabs filtro -->
+            <div id="productsGrid">
+                <!-- Kits Dinámicos de Supabase -->
+                <div id="kitsContainer" class="kits-grid">
+                    <!-- Los kits se cargarán aquí dinámicamente -->
+                </div>
+            </div><!-- /products-grid -->
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="cta-bg"></div>
+        <div class="container">
+            <div class="cta-content reveal">
+                <h2>¿No encuentras lo que <span>buscas</span>?</h2>
+                <p>Creamos soluciones a medida. Contáctanos y diseñamos el sistema perfecto para tu caso específico.</p>
+                <div class="cta-buttons">
+                    <a href="contacto.html" class="btn-primary" id="productoCotizar">☀️ Solicitar Cotización</a>
+                    <a href="servicios.html" class="btn-secondary">Ver Servicios</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo-text">☀️ Solar<span>Web</span></div>
+                    <p>Especialistas en energía solar fotovoltaica. Transformamos la luz del sol en ahorro real para tu
+                        hogar y empresa.</p>
+                    <div class="footer-social">
+                        <a href="#" class="social-btn">📘</a>
+                        <a href="#" class="social-btn">📸</a>
+                        <a href="#" class="social-btn">▶️</a>
+                        <a href="#" class="social-btn">💼</a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4>Navegación</h4>
+                    <ul>
+                        <li><a href="index.html">Inicio</a></li>
+                        <li><a href="servicios.html">Servicios</a></li>
+                        <li><a href="productos.html">Productos</a></li>
+                        <li><a href="proyectos.html">Proyectos</a></li>
+                        <li><a href="contacto.html">Contacto</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Productos</h4>
+                    <ul>
+                        <li><a href="#">Paneles Monocristalinos</a></li>
+                        <li><a href="#">Paneles Bifaciales</a></li>
+                        <li><a href="#">Inversores</a></li>
+                        <li><a href="#">Baterías LiFePO4</a></li>
+                        <li><a href="#">Kits Completos</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Contacto</h4>
+                    <ul>
+                        <li><a href="tel:+528781010058">📞 (878) 101-0058</a></li>
+                        <li><a href="mailto:pcnet_pn@hotmail.com">✉️ pcnet_pn@hotmail.com</a></li>
+                        <li><a href="#">📍 Piedras Negras, Coahuila</a></li>
+                        <li><a href="#">🕐 Lun–Vie 8am–6pm</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© <span id="currentYear"></span> <span>SolarWeb</span>. Todos los derechos reservados.</p>
+                <p>Diseñado con ☀️ para un futuro más sostenible</p>
+            </div>
+        </div>
+    </footer>
+
+    <a href="https://wa.me/528781010058" class="whatsapp-float" target="_blank" rel="noopener"
+        aria-label="WhatsApp">💬</a>
+
+    <script src="js/script.js?v=1.0.0"></script>
+
+    <script>
+        // Crear tarjeta de kit
+        function createKitCard(kit) {
+            const card = document.createElement('div');
+            card.className = 'product-card reveal visible';
+            card.setAttribute('data-category', 'kit');
+            card.style.cssText = 'display: flex; flex-direction: column; background: var(--secondary-mid); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; height: 100%;';
+
+            // capacity puede venir en kW (3) o en watts (3000)
+            const capacityKw = kit.capacity > 500 ? (kit.capacity / 1000) : kit.capacity;
+            let kitImage = kit.image || kit.image_url || (capacityKw > 5 ? 'img/panel_comercial.png' : 'img/panel_residencial.png');
+            const featuresList = kit.features ? kit.features.split(',').map(f => `<li>${f.trim()}</li>`).join('') : '';
+
+            card.innerHTML = `
+                <div class="product-img-wrapper" style="position: relative; height: 200px; overflow: hidden;">
+                    <img src="${kitImage}" alt="${kit.name}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;" />
+                    <span class="product-badge" style="position: absolute; top: 1rem; left: 1rem; background: var(--primary); color: var(--secondary); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">📦 Kit</span>
+                    ${kit.stock <= 5 ? '<span class="product-badge" style="position: absolute; top: 1rem; right: 1rem; background: #ef4444; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">⚠️ Últimas unidades</span>' : ''}
+                </div>
+                <div class="product-body" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1;">
+                    <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">${kit.name}</h3>
+                    <p class="product-desc" style="color: var(--gray-400); font-size: 0.9rem; margin-bottom: 1rem; flex: 1;">${kit.description}</p>
+
+                    <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--gray-400); font-size: 0.85rem;">Capacidad:</span>
+                            <span style="font-weight: 600;">${capacityKw} kW</span>
+                        </div>
+                        <ul style="margin: 0; padding-left: 1.2rem; color: var(--gray-300); font-size: 0.85rem; line-height: 1.6;">
+                            ${featuresList}
+                        </ul>
+                    </div>
+
+                    <div class="product-footer" style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem;">
+                        <div class="product-price" style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">$${parseFloat(kit.price).toLocaleString('es-MX')} <span style="font-size: 0.9rem; color: var(--gray-400); font-weight: 400;">MXN</span></div>
+                        <a href="contacto.html?kit=${encodeURIComponent(kit.id)}" class="btn-product" style="background: var(--primary); color: var(--secondary); padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; text-decoration: none;">Cotizar</a>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Cargar kits desde el API del backend
+        document.addEventListener('DOMContentLoaded', async function() {
+            const kitsContainer = document.getElementById('kitsContainer');
+            if (!kitsContainer) return;
+
+            kitsContainer.innerHTML = '<p style="text-align:center;width:100%;color:var(--gray-400);padding:4rem;">Cargando productos...</p>';
+
+            try {
+                const res = await fetch('/api/kits');
+                if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
+                const data = await res.json();
+
+                // Compatibilidad: tabla usa is_active (bool) o status (texto)
+                const activos = data.filter(k => {
+                    if (k.is_active === false) return false;
+                    if (k.status === 'Oculto') return false;
+                    return true;
+                });
+
+                if (activos.length === 0) {
+                    kitsContainer.innerHTML = `
+                        <div style="width:100%;text-align:center;padding:4rem 2rem;color:var(--gray-400);">
+                            <div style="font-size:3rem;margin-bottom:1rem;">☀️</div>
+                            <h3 style="color:var(--gray-300);">Próximamente</h3>
+                            <p>Estamos preparando nuestro catálogo. Contáctanos para una cotización personalizada.</p>
+                            <a href="contacto.html" class="btn-primary" style="display:inline-block;margin-top:1rem;">Solicitar cotización</a>
+                        </div>`;
+                    return;
+                }
+
+                kitsContainer.innerHTML = '';
+                activos.sort((a, b) => a.name.localeCompare(b.name));
+                activos.forEach(kit => kitsContainer.appendChild(createKitCard(kit)));
+
+                console.log(`✅ ${activos.length} kits cargados desde /api/kits`);
+            } catch (err) {
+                console.error('Error al cargar kits:', err);
+                kitsContainer.innerHTML = '<p style="text-align:center;width:100%;color:#ef4444;padding:4rem;">Error al cargar los productos. Intenta recargar la página.</p>';
+            }
+        });
+    </script>
+    <script>
+        // Tabs de productos
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const productCards = document.querySelectorAll('#productsGrid .product-card');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const tab = btn.getAttribute('data-tab');
+                productCards.forEach(card => {
+                    const cat = card.getAttribute('data-category');
+                    if (tab === 'todos' || cat === tab) {
+                        card.style.display = '';
+                        card.style.animation = 'fadeInUp 0.4s ease forwards';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>
