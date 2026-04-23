@@ -322,33 +322,31 @@ function normalizeKitIds(raw) {
     return [];
 }
 
-// Función para cargar promociones en cualquier grid que la requiera
 window.loadPromotions = async function() {
     const homePromosGrid = document.getElementById('homePromosGrid');
     const promosGrid = document.getElementById('promosGrid');
 
     if (!homePromosGrid && !promosGrid) return;
 
-    const loadingHTML = '<p style="text-align:center; width:100%; color:var(--gray-400); padding: 3rem;">Cargando promociones...</p>';
-    if (homePromosGrid) homePromosGrid.innerHTML = loadingHTML;
-    if (promosGrid) promosGrid.innerHTML = loadingHTML;
-
     let promos = [];
-    let kitsMap = {}; // id (string) → kit object
+    let kitsMap = {};
 
     try {
-        const [promosRes, kitsRes] = await Promise.all([
-            fetch('/api/promotions'),
-            fetch('/api/kits')
-        ]);
-        if (promosRes.ok) promos = await promosRes.json();
-        if (kitsRes.ok) {
-            const kitsArr = await kitsRes.json();
+        const localPromos = localStorage.getItem('solar_promos');
+        if (localPromos) promos = JSON.parse(localPromos);
+        
+        const localKits = localStorage.getItem('solar_kits');
+        if (localKits) {
+            const kitsArr = JSON.parse(localKits);
             kitsArr.forEach(k => { kitsMap[String(k.id)] = k; });
         }
-        if (promos.length > 0) console.log(`✅ ${promos.length} promociones desde /api`);
+        
+        // Filtrar promociones activas
+        promos = promos.filter(p => p.status !== 'Inactiva' && p.status !== 'Oculto');
+        
+        if (promos.length > 0) console.log(`✅ ${promos.length} promociones desde LocalStorage`);
     } catch (err) {
-        console.warn('⚠️ API no disponible:', err);
+        console.warn('⚠️ Error leyendo promociones locales:', err);
     }
 
     if (promos.length === 0) {
@@ -364,8 +362,8 @@ window.loadPromotions = async function() {
         container.innerHTML = '';
 
         promos.forEach((promo, index) => {
-            const kitIds = normalizeKitIds(promo.kit_ids);
-            const color = promo.badge_color || '#f97316';
+            const kitIds = normalizeKitIds(promo.kit_ids || promo.product_ids);
+            const color = promo.badge_color || promo.color || '#f97316';
 
             // --- Construir bloque de imagen ---
             let imageHTML = '';
@@ -373,7 +371,7 @@ window.loadPromotions = async function() {
             if (promo.image && promo.image.trim() !== '') {
                 // Imagen propia de la promo
                 imageHTML = `<div style="height:210px; border-radius:12px; overflow:hidden; margin-bottom:1rem;">
-                    <img src="${promo.image}" alt="${promo.title}" loading="lazy"
+                    <img src="${promo.image}" alt="${promo.title || promo.name}" loading="lazy"
                         style="width:100%; height:100%; object-fit:cover;">
                 </div>`;
 
@@ -400,7 +398,7 @@ window.loadPromotions = async function() {
             if (!imageHTML) {
                 const fallbackSrc = DEFAULT_PROMO_IMAGES[index % DEFAULT_PROMO_IMAGES.length];
                 imageHTML = `<div style="height:210px; border-radius:12px; overflow:hidden; margin-bottom:1rem; position:relative;">
-                    <img src="${fallbackSrc}" alt="${promo.title}" loading="lazy"
+                    <img src="${fallbackSrc}" alt="${promo.title || promo.name}" loading="lazy"
                         style="width:100%; height:100%; object-fit:cover; display:block;">
                     <div style="position:absolute; inset:0; background:${color}15;"></div>
                 </div>`;
@@ -413,6 +411,10 @@ window.loadPromotions = async function() {
             const origPriceHtml = promo.original_price
                 ? `<span style="text-decoration:line-through; color:var(--gray-400); font-size:0.9rem; margin-right:0.5rem;">${promo.original_price}</span>`
                 : '';
+                
+            const promoPrice = promo.promo_price || (promo.discount_type === 'percentage' 
+                ? `-${promo.discount_value}%` 
+                : `-$${Number(promo.discount_value).toLocaleString('es-MX')}`);
 
             const ctaHref = kitIds.length > 0
                 ? `productos.html?kit=${encodeURIComponent(kitIds[0])}`
@@ -427,11 +429,11 @@ window.loadPromotions = async function() {
                     <div style="text-align:center; margin-bottom:0.8rem;">
                         <span style="background:${color}; color:white; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.75rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;">${promo.badge || 'OFERTA'}</span>
                     </div>
-                    <h3 style="margin-bottom:0.4rem;">${promo.title}</h3>
+                    <h3 style="margin-bottom:0.4rem;">${promo.title || promo.name}</h3>
                     <p style="color:var(--gray-400); margin-bottom:0.8rem; font-size:0.88rem; line-height:1.5;">${promo.description || ''}</p>
                     <div style="margin:0.8rem 0; background:rgba(0,0,0,0.2); padding:0.9rem; border-radius:8px; text-align:center;">
                         ${origPriceHtml}
-                        <span style="color:${color}; font-size:1.75rem; font-weight:700; display:block; margin-top:0.2rem;">${promo.promo_price}</span>
+                        <span style="color:${color}; font-size:1.75rem; font-weight:700; display:block; margin-top:0.2rem;">${promoPrice}</span>
                     </div>
                     ${featuresHTML ? `<ul class="service-features" style="margin-bottom:1rem;">${featuresHTML}</ul>` : ''}
                     <a href="${ctaHref}" class="btn-primary" style="width:100%; text-align:center; display:block; box-sizing:border-box; background-color:${color}; border-color:${color};">Aprovechar Oferta</a>

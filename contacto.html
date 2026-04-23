@@ -650,24 +650,30 @@
                 };
 
                 try {
-                    const response = await fetch(window.location.origin + '/api/contact', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                        body: JSON.stringify(formData)
-                    });
+                    // Guardar directamente en Local Storage para que el Panel Admin lo lea
+                    const localData = localStorage.getItem('solar_contacts');
+                    const contacts = localData ? JSON.parse(localData) : [];
+                    
+                    const newContact = {
+                        id: Date.now(),
+                        created_at: new Date().toISOString(),
+                        status: 'Nuevo',
+                        crm_note: '',
+                        ...formData
+                    };
+                    
+                    contacts.push(newContact);
+                    localStorage.setItem('solar_contacts', JSON.stringify(contacts));
+                    
+                    // Simular retraso de red
+                    await new Promise(r => setTimeout(r, 600));
 
-                    const data = await response.json();
-
-                    if (data.success) {
-                        mostrarExito();
-                        console.log('✅ Solicitud guardada en servidor');
-                    } else {
-                        throw new Error(data.error || 'Error del servidor');
-                    }
+                    mostrarExito();
+                    console.log('✅ Solicitud guardada en LocalStorage');
                 } catch (err) {
-                    console.warn('⚠️ Error enviando solicitud:', err.message);
-                    alert('No se pudo enviar tu solicitud. Intenta nuevamente en unos minutos.');
-                    submitBtn.innerHTML = 'Enviar Solicitud';
+                    console.warn('⚠️ Error guardando solicitud:', err.message);
+                    alert('No se pudo enviar tu solicitud. Intenta nuevamente.');
+                    submitBtn.innerHTML = '☀️ Enviar Solicitud de Cotización';
                     submitBtn.disabled = false;
                 }
             });
