@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: paneles-solares
+    runtime: node
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SENDGRID_API_KEY
+        scope: build,runtime
+      - key: SENDGRID_FROM_EMAIL
+        scope: build,runtime
+      - key: TWILIO_ACCOUNT_SID
+        scope: build,runtime
+      - key: TWILIO_AUTH_TOKEN
+        scope: build,runtime
+      - key: TWILIO_PHONE
+        scope: build,runtime
+      - key: ADMIN_EMAIL
+        scope: build,runtime
+    headers:
+      - path: /img/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /css/*
+        name: Cache-Control
+        value: public, max-age=604800, immutable
+      - path: /js/*
+        name: Cache-Control
+        value: public, max-age=604800, immutable
