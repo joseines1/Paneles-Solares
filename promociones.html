@@ -176,6 +176,48 @@
         <a href="https://wa.me/528781010058" class="whatsapp-float" target="_blank" rel="noopener"
             aria-label="WhatsApp">💬</a>
         <script src="js/script.js?v=2.0"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const promosGrid = document.getElementById('promosGrid');
+                if (!promosGrid) return;
+
+                const localData = localStorage.getItem('solar_promos');
+                const promos = localData ? JSON.parse(localData) : [];
+
+                const activas = promos.filter(p => p.status !== 'Inactiva');
+
+                if (activas.length === 0) {
+                    promosGrid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align:center; padding:4rem; color:var(--gray-400);">
+                            <div style="font-size:3rem; margin-bottom:1rem;">🎁</div>
+                            <h3>Próximamente</h3>
+                            <p>Estamos preparando nuevas promociones especiales. ¡Vuelve pronto!</p>
+                        </div>`;
+                    return;
+                }
+
+                promosGrid.innerHTML = activas.map(promo => {
+                    const discountText = promo.discount_type === 'percentage' 
+                        ? `-${promo.discount_value}%` 
+                        : `-$${Number(promo.discount_value).toLocaleString('es-MX')}`;
+                    
+                    return `
+                        <div class="service-card reveal visible" style="animation: fadeInUp 0.5s ease forwards;">
+                            <div style="position:absolute; top:1rem; right:-1rem; background:var(--primary); color:var(--secondary); padding:0.25rem 1rem; font-weight:700; transform:rotate(15deg); box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+                                ${discountText}
+                            </div>
+                            <div class="service-icon">🎁</div>
+                            <h3>${promo.name}</h3>
+                            <p>${promo.description}</p>
+                            <p style="color:var(--gray-400); font-size:0.85rem; margin-top:1rem;">
+                                Válido hasta: <strong>${new Date(promo.end_date).toLocaleDateString('es-MX')}</strong>
+                            </p>
+                            <a href="contacto.html?promo=${encodeURIComponent(promo.id)}" class="btn-secondary" style="margin-top:1.5rem; display:inline-block; width:100%; text-align:center;">Solicitar Promoción</a>
+                        </div>
+                    `;
+                }).join('');
+            });
+        </script>
     </body>
 
 </html>

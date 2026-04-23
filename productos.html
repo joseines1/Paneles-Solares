@@ -363,9 +363,8 @@
             kitsContainer.innerHTML = '<p style="text-align:center;width:100%;color:var(--gray-400);padding:4rem;">Cargando productos...</p>';
 
             try {
-                const res = await fetch('/api/kits');
-                if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
-                const data = await res.json();
+                const localData = localStorage.getItem('solar_kits');
+                const data = localData ? JSON.parse(localData) : [];
 
                 // Compatibilidad: tabla usa is_active (bool) o status (texto)
                 const activos = data.filter(k => {
@@ -389,9 +388,9 @@
                 activos.sort((a, b) => a.name.localeCompare(b.name));
                 activos.forEach(kit => kitsContainer.appendChild(createKitCard(kit)));
 
-                console.log(`✅ ${activos.length} kits cargados desde /api/kits`);
+                console.log(`✅ ${activos.length} productos cargados desde LocalStorage`);
             } catch (err) {
-                console.error('Error al cargar kits:', err);
+                console.error('Error al cargar productos:', err);
                 kitsContainer.innerHTML = '<p style="text-align:center;width:100%;color:#ef4444;padding:4rem;">Error al cargar los productos. Intenta recargar la página.</p>';
             }
         });
