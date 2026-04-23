@@ -1,4 +1,0 @@
-0000000000000000000000000000000000000000 49954f340c2cc72c1ad44cda9de99f1e808418df José Inés <joseines1@github.com> 1773180845 -0500	commit (initial): Deploy config: render.yaml + SEO + 404 + robots
-49954f340c2cc72c1ad44cda9de99f1e808418df a640998d97ad0edf8f2bcfdb2cbb995acab74395 José Inés <joseines1@github.com> 1773181124 -0500	commit: Render static site: render.yaml + SEO + 404 + robots + sitemap
-a640998d97ad0edf8f2bcfdb2cbb995acab74395 82d917243f48d6840e8f20b971c9613ce01a0e85 José Inés <joseines1@github.com> 1773253161 -0500	commit: Mejoras de producción: mapa, FAQ fixed, formulario real y datos de contacto actualizados
-82d917243f48d6840e8f20b971c9613ce01a0e85 044855543a4acc8e81bad8771e2245a9634c2af1 José Inés <joseines1@github.com> 1773900767 -0500	commit: Feat: formulario real via FormSubmit, FAQs funcionales, mapa en Contacto, mejoras móviles, SEO/OG y datos de contacto actualizados

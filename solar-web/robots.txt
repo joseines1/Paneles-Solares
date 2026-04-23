@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://paneles-solares.onrender.com/sitemap.xml
