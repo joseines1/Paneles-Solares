@@ -1,13 +1,11 @@
 {
-<<<<<<< HEAD
   "name": "solar-web",
   "version": "1.0.0",
   "description": "Sitio web de paneles solares fotovoltaicos con panel de administración",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
-    "admin:hash": "node scripts/generate-admin-hash.js"
+    "dev": "node server.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
@@ -17,26 +15,5 @@
   },
   "engines": {
     "node": ">=18.0.0"
-=======
-  "name": "paneles-solares-backend",
-  "version": "1.0.0",
-  "description": "Backend para Paneles Solares - Gestión de cotizaciones",
-  "main": "server.js",
-  "type": "module",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
-  "dependencies": {
-    "@sendgrid/mail": "^8.1.6",
-    "@supabase/supabase-js": "^2.38.4",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "twilio": "^4.10.0"
-  },
-  "engines": {
-    "node": "18.x"
->>>>>>> 54ee053fbb1e2eb5e24802296bb6d9590b88a464
   }
 }
